@@ -1,0 +1,37 @@
+schema: spec-driven
+
+context: |
+  Package: @vanduo-oss/vd3-flowchart (MIT, vanduo-oss org). Standalone Vue 3
+  flowchart extracted 1-to-1 from @vanduo-oss/vd3-cbun@1.4.2 (flowchart 1.2.0).
+  Named exports on "." (VdFlowchart + VdFlowchartCore + layout + FLOWCHART_*)
+  and "./css". No IIFE builds — the Vue bindings ARE the root export; the core
+  stays exported alongside (wrapper consumes it). Stack: plain JS core + thin
+  Vue defineComponent wrapper, hand-written .d.ts, esbuild single-entry build
+  (esm+cjs, external: ['vue'], no minify), styles.css copied to
+  dist/vd3-flowchart.css. vue >=3.3 is a REQUIRED peer.
+  sideEffects: ["**/*.css"].
+  Version: package.json version IS VD_FLOWCHART_VERSION (1.2.0). Load-bearing —
+  serialized into documents via toJSON().version. Do not reset it.
+  Tests: vitest + @vue/test-utils + jsdom, Playwright smoke against built dist/,
+  tsc type tests via package self-reference.
+  vd3-cbun is READ-ONLY reference. Do not publish openspec/ to npm.
+
+rules:
+  proposal:
+    - Call out semver impact for package.json AND VD_FLOWCHART_VERSION (they stay equal)
+    - Serialization format changes require explicit backward-compatibility scenarios
+    - Always include a "Non-goals" section
+  specs:
+    - Use Given/When/Then scenario format under each requirement
+    - Use SHALL/MUST for normative requirements
+    - Serialization formats (flowchart toJSON) require explicit backward-compatibility scenarios
+  design:
+    - No window.* globals, no auto-init/DOM-scan layers, no IIFE
+    - Core stays framework-agnostic; Vue layer stays a thin wrapper
+    - No new runtime npm dependencies
+  tasks:
+    - Include pnpm build and pnpm test when code changes
+    - Include esbuild metafile isolation verification when exports/build change
+    - Include docs sync step (vd3-docs) when public API changes
+  changelog:
+    - Track this package only (@vanduo-oss/vd3-flowchart); never docs-site content

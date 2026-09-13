@@ -1,0 +1,23 @@
+{
+  // Type-test harness compiler options. `pnpm test:types` runs
+  // `tsc --noEmit -p` against this file so a wrong hand-written declaration
+  // fails the build loudly.
+  //
+  // Module resolution: the *.test-d.ts files import the PUBLISHED type
+  // surface by package self-reference ('@vanduo-oss/vd3-flowchart'). TypeScript
+  // resolves a self-reference through the enclosing package.json's "name" +
+  // "exports" map, which points at the built dist/*.d.ts — so this harness
+  // type-checks the ACTUAL shipped declarations (requires `pnpm build` first,
+  // same as the Playwright smoke).
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2020",
+    "lib": ["es2020", "dom"],
+    "types": []
+  },
+  "include": ["./*.test-d.ts"]
+}

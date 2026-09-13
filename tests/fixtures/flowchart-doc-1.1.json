@@ -1,0 +1,52 @@
+{
+  "version": "1.1.0",
+  "viewport": { "x": 40, "y": 24, "scale": 1 },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "circle",
+      "x": 80,
+      "y": 200,
+      "width": 128,
+      "height": 128,
+      "text": "Start",
+      "data": {}
+    },
+    {
+      "id": "process",
+      "type": "rect",
+      "x": 320,
+      "y": 216,
+      "width": 180,
+      "height": 96,
+      "text": "Do the work",
+      "data": { "role": "worker" }
+    },
+    {
+      "id": "decision",
+      "type": "diamond",
+      "x": 620,
+      "y": 200,
+      "width": 184,
+      "height": 120,
+      "text": "OK?",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start-process",
+      "from": { "nodeId": "start", "port": "right" },
+      "to": { "nodeId": "process", "port": "left" },
+      "kind": "arrow",
+      "label": ""
+    },
+    {
+      "id": "e-process-decision",
+      "from": { "nodeId": "process", "port": "right" },
+      "to": { "nodeId": "decision", "port": "left" },
+      "kind": "line",
+      "label": "next"
+    }
+  ]
+}

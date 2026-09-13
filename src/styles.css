@@ -1,0 +1,729 @@
+:root {
+  --vd-flowchart-surface: var(--vd-bg-primary, #fcfbf7);
+  --vd-flowchart-panel: color-mix(in srgb, var(--vd-bg-primary, #fcfbf7) 90%, var(--vd-bg-secondary, #f4efe2));
+  --vd-flowchart-panel-alt: color-mix(in srgb, var(--vd-bg-secondary, #f4efe2) 82%, var(--vd-bg-primary, #fcfbf7));
+  --vd-flowchart-border: color-mix(in srgb, var(--vd-border-color, #d5ccba) 78%, var(--vd-bg-primary, #fcfbf7));
+  --vd-flowchart-accent: var(--vd-color-primary, #245f52);
+  --vd-flowchart-accent-soft: color-mix(in srgb, var(--vd-color-primary, #245f52) 16%, transparent);
+  --vd-flowchart-text: var(--vd-text-primary, #1f2720);
+  --vd-flowchart-muted: var(--vd-text-muted, #67746a);
+  --vd-flowchart-node-fill: color-mix(in srgb, var(--vd-bg-primary, #fcfbf7) 95%, var(--vd-bg-secondary, #f4efe2));
+  --vd-flowchart-node-stroke: color-mix(in srgb, var(--vd-border-color, #d5ccba) 86%, var(--vd-bg-primary, #fcfbf7));
+  /* Selected/hover node + edge state. Set these (and --vd-flowchart-node-fill)
+     directly to retheme without `!important`; the surface blend above is only
+     the default and is fully overridable. */
+  --vd-flowchart-node-fill-selected: color-mix(in srgb, var(--vd-flowchart-accent) 86%, var(--vd-bg-primary, #fcfbf7));
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-accent);
+  --vd-flowchart-edge-stroke: color-mix(in srgb, var(--vd-flowchart-accent) 70%, var(--vd-flowchart-text));
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-accent);
+  --vd-flowchart-edge-label: var(--vd-flowchart-muted);
+  /* Surfaces follow the active palette instead of mixing toward fixed light tones. */
+  --vd-flowchart-shell-bg:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--vd-flowchart-accent) 10%, transparent), transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--vd-flowchart-surface) 92%, var(--vd-bg-secondary, #f4efe2)), var(--vd-flowchart-surface));
+  --vd-flowchart-canvas-bg: transparent;
+  --vd-flowchart-toolbar-bg: color-mix(in srgb, var(--vd-flowchart-panel) 92%, transparent);
+  --vd-flowchart-panel-bg: color-mix(in srgb, var(--vd-flowchart-panel-alt) 88%, transparent);
+  /* Font for SVG text + UI chrome (SVG <text> does not inherit reliably). */
+  --vd-flowchart-font: inherit;
+}
+
+.vd-flowchart-host {
+  /* A definite height (not just min-height) so the editor's internal grid can
+     size its body row deterministically. Consumers that set a larger min-height
+     or height still win — the used height is the larger of the two and stays
+     definite, which keeps the canvas from resizing when the inspector fills in.
+     min-height: 0 lets height: 100% shrink below 560px in short parents
+     (docs fullscreen) without clipping the shell's bottom border. */
+  box-sizing: border-box;
+  height: 560px;
+  min-height: 0;
+  font-family: var(--vd-flowchart-font);
+}
+
+.vd-flowchart-shell {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  /* Fill the host only — a fixed min-height here overflowed short containers
+     and clipped the bottom outline off-screen. */
+  min-height: 0;
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 8px;
+  background: var(--vd-flowchart-shell-bg);
+  color: var(--vd-flowchart-text);
+  overflow: hidden;
+}
+
+.vd-flowchart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--vd-flowchart-border);
+  background: var(--vd-flowchart-toolbar-bg);
+  backdrop-filter: blur(16px);
+}
+
+.vd-flowchart-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.vd-flowchart-toolbar-label {
+  font-size: 0.8rem;
+  color: var(--vd-flowchart-muted);
+  letter-spacing: 0;
+}
+
+.vd-flowchart-body {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 300px;
+  min-height: 0;
+}
+
+.vd-flowchart-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.95rem;
+  background: var(--vd-flowchart-panel-bg);
+  /* Scroll the panel's own content instead of growing the shell (and with it
+     the canvas) when a selection populates the inspector. */
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vd-flowchart-panel--palette {
+  border-right: 1px solid var(--vd-flowchart-border);
+}
+
+.vd-flowchart-panel--inspector {
+  border-left: 1px solid var(--vd-flowchart-border);
+}
+
+.vd-flowchart-panel-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--vd-flowchart-muted);
+}
+
+.vd-flowchart-palette {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+
+.vd-flowchart-btn,
+.vd-flowchart-palette-btn,
+.vd-flowchart-field input,
+.vd-flowchart-field select,
+.vd-flowchart-field textarea,
+.vd-flowchart-json textarea {
+  font: inherit;
+}
+
+.vd-flowchart-btn,
+.vd-flowchart-palette-btn,
+.vd-flowchart-json-btn {
+  appearance: none;
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 7px;
+  /* Use background-color (not the `background` shorthand) so host `select`
+     rules cannot leave a chevron background-image tiling after dark-mode
+     theme overrides re-set only the image. */
+  background-color: color-mix(in srgb, var(--vd-flowchart-panel) 90%, var(--vd-bg-primary, #fcfbf7));
+  background-image: none;
+  background-repeat: no-repeat;
+  color: var(--vd-flowchart-text);
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.vd-flowchart-btn,
+.vd-flowchart-json-btn {
+  min-height: 2.1rem;
+  padding: 0.45rem 0.75rem;
+}
+
+/* Draw-style square icon buttons for toolbar actions. */
+.vd-flowchart-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  min-height: 2.1rem;
+  padding: 0;
+  color: var(--vd-flowchart-text);
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.vd-flowchart-icon-btn:hover {
+  background-color: color-mix(in srgb, var(--vd-flowchart-accent) 12%, transparent);
+  border-color: transparent;
+  transform: none;
+}
+
+.vd-flowchart-icon-btn:focus-visible {
+  outline: 2px solid var(--vd-flowchart-accent);
+  outline-offset: 1px;
+}
+
+.vd-flowchart-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
+}
+
+/* Host design systems style every `select` (vd3: width 100% + chevron SVG).
+   Own the arrange control: compact width, single no-repeat caret, active value. */
+.vd-flowchart-host select.vd-flowchart-btn,
+.vd-flowchart-host .vd-flowchart-arrange,
+.vd-flowchart-shell select.vd-flowchart-btn,
+.vd-flowchart-shell .vd-flowchart-arrange {
+  width: auto;
+  min-width: 6.5rem;
+  max-width: 9rem;
+  padding: 0.4rem 1.85rem 0.4rem 0.7rem;
+  font-weight: 600;
+  background-color: color-mix(in srgb, var(--vd-flowchart-panel) 90%, var(--vd-bg-primary, #fcfbf7));
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2367746a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 12px 12px;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.vd-flowchart-host .vd-flowchart-field select,
+.vd-flowchart-shell .vd-flowchart-field select {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-position: initial;
+  background-size: auto;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+[data-theme='dark'] .vd-flowchart-host .vd-flowchart-arrange,
+[data-theme='dark'] .vd-flowchart-shell .vd-flowchart-arrange {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23adb5bd' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 12px 12px;
+}
+
+.vd-flowchart-palette-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 3.6rem;
+  padding: 0.4rem 0.25rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--vd-flowchart-text);
+}
+
+.vd-flowchart-palette-btn:hover {
+  background-color: color-mix(in srgb, var(--vd-flowchart-accent) 12%, transparent);
+  border-color: transparent;
+  transform: none;
+}
+
+.vd-flowchart-palette-btn.is-active,
+.vd-flowchart-palette-btn[aria-pressed='true'] {
+  background-color: color-mix(in srgb, var(--vd-flowchart-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vd-flowchart-accent) 55%, var(--vd-flowchart-border));
+  color: var(--vd-flowchart-accent);
+  box-shadow: none;
+}
+
+.vd-flowchart-palette-preview {
+  display: block;
+  width: 2.4rem;
+  max-width: 100%;
+  height: 1.7rem;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.22));
+}
+
+.vd-flowchart-palette-shape {
+  fill: var(--vd-flowchart-node-fill);
+  stroke: var(--vd-flowchart-text);
+  stroke-width: 2.25;
+}
+
+.vd-flowchart-palette-shape--textbox {
+  stroke-dasharray: 5 4;
+}
+
+.vd-flowchart-palette-shape--junction {
+  fill: var(--vd-flowchart-accent);
+  stroke: color-mix(in srgb, var(--vd-flowchart-accent) 50%, var(--vd-flowchart-text));
+}
+
+.vd-flowchart-palette-lines {
+  fill: none;
+  stroke: var(--vd-flowchart-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.vd-flowchart-palette-arrow {
+  fill: none;
+  stroke: var(--vd-flowchart-text);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.vd-flowchart-palette-arrowhead {
+  fill: var(--vd-flowchart-text);
+}
+
+.vd-flowchart-palette-junction-lines {
+  fill: none;
+  stroke: color-mix(in srgb, var(--vd-flowchart-accent) 42%, var(--vd-flowchart-muted));
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.vd-flowchart-palette-label-mark {
+  fill: var(--vd-flowchart-text);
+  font-family: var(--vd-flowchart-font);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.vd-flowchart-palette-label {
+  display: block;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vd-flowchart-palette-btn.is-active .vd-flowchart-palette-shape,
+.vd-flowchart-palette-btn[aria-pressed='true'] .vd-flowchart-palette-shape,
+.vd-flowchart-palette-btn.is-active .vd-flowchart-palette-arrow,
+.vd-flowchart-palette-btn[aria-pressed='true'] .vd-flowchart-palette-arrow,
+.vd-flowchart-palette-btn.is-active .vd-flowchart-palette-lines,
+.vd-flowchart-palette-btn[aria-pressed='true'] .vd-flowchart-palette-lines {
+  stroke: var(--vd-flowchart-accent);
+}
+
+.vd-flowchart-palette-btn.is-active .vd-flowchart-palette-arrowhead,
+.vd-flowchart-palette-btn[aria-pressed='true'] .vd-flowchart-palette-arrowhead,
+.vd-flowchart-palette-btn.is-active .vd-flowchart-palette-label-mark,
+.vd-flowchart-palette-btn[aria-pressed='true'] .vd-flowchart-palette-label-mark {
+  fill: var(--vd-flowchart-accent);
+}
+
+.vd-flowchart-btn:hover,
+.vd-flowchart-json-btn:hover {
+  border-color: color-mix(in srgb, var(--vd-flowchart-accent) 42%, var(--vd-flowchart-border));
+  transform: translateY(-1px);
+}
+
+.vd-flowchart-btn:focus-visible,
+.vd-flowchart-palette-btn:focus-visible,
+.vd-flowchart-json-btn:focus-visible,
+.vd-flowchart-field input:focus-visible,
+.vd-flowchart-field select:focus-visible,
+.vd-flowchart-field textarea:focus-visible,
+.vd-flowchart-json textarea:focus-visible,
+.vd-flowchart-canvas:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--vd-flowchart-accent) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.vd-flowchart-btn:disabled,
+.vd-flowchart-json-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.vd-flowchart-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--vd-flowchart-canvas-bg);
+}
+
+.vd-flowchart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  touch-action: none;
+}
+
+.vd-flowchart-grid {
+  pointer-events: none;
+}
+
+.vd-flowchart-edge-path,
+.vd-flowchart-edge-selection,
+.vd-flowchart-edge-hit,
+.vd-flowchart-preview-path {
+  fill: none;
+}
+
+.vd-flowchart-edge-selection {
+  stroke: color-mix(in srgb, var(--vd-flowchart-accent) 28%, transparent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.vd-flowchart-edge-path {
+  stroke: var(--vd-flowchart-edge-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vd-flowchart-edge.is-selected .vd-flowchart-edge-path {
+  stroke: var(--vd-flowchart-edge-stroke-selected);
+}
+
+.vd-flowchart-edge-hit {
+  stroke: transparent;
+  cursor: pointer;
+}
+
+.vd-flowchart-preview-path {
+  stroke: color-mix(in srgb, var(--vd-flowchart-accent) 55%, transparent);
+  stroke-dasharray: 8 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vd-flowchart-edge-label {
+  font-family: var(--vd-flowchart-font);
+  font-size: 12px;
+  fill: var(--vd-flowchart-edge-label);
+  paint-order: stroke;
+  stroke: color-mix(in srgb, var(--vd-flowchart-surface) 94%, transparent);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.vd-flowchart-node {
+  cursor: grab;
+}
+
+.vd-flowchart-node.is-dragging,
+.vd-flowchart-node.is-resizing {
+  cursor: grabbing;
+}
+
+.vd-flowchart-node-shape {
+  fill: var(--vd-flowchart-node-fill);
+  stroke: var(--vd-flowchart-node-stroke);
+  stroke-width: 1.5;
+  transition: stroke 120ms ease, filter 120ms ease, fill 120ms ease;
+}
+
+.vd-flowchart-node-shape--textbox {
+  stroke-dasharray: 8 5;
+}
+
+.vd-flowchart-node-shape--label {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.vd-flowchart-node-shape--junction {
+  fill: var(--vd-flowchart-accent);
+  stroke: color-mix(in srgb, var(--vd-flowchart-accent) 72%, var(--vd-flowchart-text));
+  stroke-width: 1.25;
+}
+
+.vd-flowchart-node.is-selected .vd-flowchart-node-shape,
+.vd-flowchart-node:hover .vd-flowchart-node-shape {
+  stroke: var(--vd-flowchart-node-stroke-selected);
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--vd-flowchart-accent) 12%, transparent));
+}
+
+.vd-flowchart-node:hover .vd-flowchart-node-shape--junction,
+.vd-flowchart-node.is-selected .vd-flowchart-node-shape--junction {
+  fill: var(--vd-flowchart-node-fill-selected);
+}
+
+.vd-flowchart-node-text {
+  fill: var(--vd-flowchart-text);
+  font-family: var(--vd-flowchart-font);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  dominant-baseline: middle;
+  text-anchor: middle;
+}
+
+.vd-flowchart-node-text--textbox {
+  font-size: 13px;
+  font-weight: 500;
+  dominant-baseline: auto;
+  text-anchor: start;
+}
+
+.vd-flowchart-node-text--label {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.vd-flowchart-port-group {
+  pointer-events: none;
+}
+
+.vd-flowchart-port-hit {
+  fill: transparent;
+}
+
+.vd-flowchart-port {
+  opacity: 0;
+  fill: color-mix(in srgb, var(--vd-flowchart-panel) 88%, var(--vd-bg-primary, #fcfbf7));
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  transition: opacity 120ms ease, transform 120ms ease, fill 120ms ease;
+}
+
+.vd-flowchart-port-group.is-visible {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.vd-flowchart-port-group.is-visible .vd-flowchart-port {
+  opacity: 1;
+}
+
+.vd-flowchart-port-group.is-visible:hover .vd-flowchart-port {
+  transform: scale(1.08);
+  fill: color-mix(in srgb, var(--vd-flowchart-accent) 12%, var(--vd-bg-primary, #fcfbf7));
+}
+
+.vd-flowchart-canvas.is-connecting .vd-flowchart-node:hover .vd-flowchart-node-shape {
+  stroke: var(--vd-flowchart-node-stroke);
+  filter: none;
+}
+
+.vd-flowchart-canvas.is-connecting .vd-flowchart-port-group.is-visible .vd-flowchart-port,
+.vd-flowchart-canvas.is-arrow-tool .vd-flowchart-port-group.is-visible .vd-flowchart-port {
+  opacity: 1;
+}
+
+.vd-flowchart-canvas.is-connecting .vd-flowchart-port-group.is-visible:hover .vd-flowchart-port,
+.vd-flowchart-canvas.is-arrow-tool .vd-flowchart-port-group.is-visible:hover .vd-flowchart-port {
+  transform: none;
+}
+
+.vd-flowchart-edge-endpoint-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.vd-flowchart-edge-endpoint {
+  fill: color-mix(in srgb, var(--vd-flowchart-panel) 88%, var(--vd-bg-primary, #fcfbf7));
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 2;
+  cursor: crosshair;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.vd-flowchart-edge.is-reconnecting .vd-flowchart-edge-path {
+  stroke-dasharray: 6 4;
+}
+
+.vd-flowchart-node.is-editing .vd-flowchart-node-text {
+  opacity: 0;
+}
+
+.vd-flowchart-resize-zone {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.vd-flowchart-resize-handle {
+  fill: color-mix(in srgb, var(--vd-flowchart-panel) 92%, var(--vd-bg-primary, #fcfbf7));
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+}
+
+.vd-flowchart-text-editor {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--vd-flowchart-accent) 78%, var(--vd-flowchart-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vd-flowchart-panel) 92%, var(--vd-bg-primary, #fcfbf7));
+  color: var(--vd-flowchart-text);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--vd-flowchart-accent) 16%, transparent);
+  font: inherit;
+  font-weight: 600;
+  outline: none;
+  overflow: hidden;
+  resize: none;
+  text-align: center;
+}
+
+.vd-flowchart-text-editor--textbox {
+  border-style: dashed;
+  font-weight: 500;
+  text-align: left;
+}
+
+.vd-flowchart-text-editor--label {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--vd-flowchart-panel) 82%, transparent);
+  font-weight: 700;
+}
+
+.vd-flowchart-selection-meta {
+  font-size: 0.86rem;
+  color: var(--vd-flowchart-muted);
+}
+
+.vd-flowchart-selection-empty {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--vd-flowchart-muted);
+}
+
+.vd-flowchart-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vd-flowchart-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.vd-flowchart-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.vd-flowchart-field label {
+  font-size: 0.78rem;
+  color: var(--vd-flowchart-muted);
+}
+
+.vd-flowchart-field input,
+.vd-flowchart-field select,
+.vd-flowchart-field textarea,
+.vd-flowchart-json textarea {
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--vd-flowchart-panel) 94%, var(--vd-bg-primary, #fcfbf7));
+  background-image: none;
+  background-repeat: no-repeat;
+  color: var(--vd-flowchart-text);
+  padding: 0.55rem 0.65rem;
+}
+
+.vd-flowchart-field select {
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+}
+
+.vd-flowchart-field textarea,
+.vd-flowchart-json textarea {
+  resize: vertical;
+  min-height: 5.5rem;
+}
+
+.vd-flowchart-delete {
+  width: 100%;
+}
+
+.vd-flowchart-json {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+.vd-flowchart-json-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.vd-flowchart-json textarea {
+  min-height: 13rem;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.vd-flowchart-readonly .vd-flowchart-panel--palette,
+.vd-flowchart-readonly .vd-flowchart-panel--inspector {
+  display: none;
+}
+
+.vd-flowchart-readonly .vd-flowchart-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1180px) {
+  .vd-flowchart-body {
+    grid-template-columns: 88px minmax(0, 1fr);
+    /* Cap the stacked inspector so it scrolls rather than stealing canvas
+       height (which would make the canvas jump on selection). */
+    grid-template-rows: minmax(0, 1fr) minmax(0, 16rem);
+  }
+
+  .vd-flowchart-panel--inspector {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--vd-flowchart-border);
+  }
+}
+
+@media (max-width: 840px) {
+  .vd-flowchart-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(280px, 1fr) minmax(0, 16rem);
+  }
+
+  .vd-flowchart-panel--palette {
+    border-right: 0;
+    border-bottom: 1px solid var(--vd-flowchart-border);
+  }
+
+  .vd-flowchart-palette {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

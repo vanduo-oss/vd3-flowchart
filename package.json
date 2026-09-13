@@ -1,0 +1,86 @@
+{
+  "name": "@vanduo-oss/vd3-flowchart",
+  "version": "1.2.0",
+  "description": "Vanduo Vue 3 flowchart editor — nodes, edges, layout, undo/redo, and a framework-agnostic core",
+  "type": "module",
+  "license": "MIT",
+  "author": "vanduo-oss",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/vanduo-oss/vd3-flowchart#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vanduo-oss/vd3-flowchart.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vanduo-oss/vd3-flowchart/issues"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./css": "./dist/vd3-flowchart.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "SKILL.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vanduo",
+    "vue",
+    "flowchart",
+    "diagram",
+    "editor",
+    "svg"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "clean": "rm -rf dist",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,ts}\" \"scripts/**/*.js\" \"tests/**/*.{js,ts}\"",
+    "format:check": "prettier --check \"src/**/*.{js,ts}\" \"scripts/**/*.js\" \"tests/**/*.{js,ts}\"",
+    "stylelint": "stylelint \"src/**/*.css\"",
+    "test": "vitest run",
+    "test:types": "tsc --noEmit -p tests/types/tsconfig.json",
+    "test:e2e": "playwright test",
+    "prepack": "pnpm run build",
+    "release": "pnpm run build && pnpm publish"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@typescript-eslint/parser": "8.69.0",
+    "@vue/test-utils": "2.5.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "jsdom": "29.1.1",
+    "prettier": "3.9.6",
+    "stylelint": "17.15.0",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "4.1.11",
+    "vue": "3.5.42"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

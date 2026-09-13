@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vd3-flowchart smoke</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/dist/vd3-flowchart.css" />
+    <style>
+      :root {
+        --vd-bg-primary: #ffffff;
+        --vd-bg-secondary: #f8f9fa;
+        --vd-border-color: #dee2e6;
+        --vd-text-primary: #1a1d20;
+        --vd-text-muted: #868e96;
+        --vd-color-primary: #364fc7;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: system-ui, sans-serif;
+        background: #ffffff;
+      }
+      #flowchart {
+        width: 800px;
+        height: 480px;
+      }
+    </style>
+    <script type="importmap">
+      { "imports": { "vue": "/node_modules/vue/dist/vue.esm-browser.js" } }
+    </script>
+  </head>
+  <body>
+    <div id="flowchart"></div>
+
+    <script type="module">
+      import { VdFlowchartCore, VD_FLOWCHART_VERSION } from '/dist/index.js';
+
+      const editor = new VdFlowchartCore({
+        element: '#flowchart',
+        history: true,
+        autoFit: true,
+      });
+
+      const a = editor.addNode({ type: 'rect', x: 80, y: 80, text: 'Start' });
+      const b = editor.addNode({ type: 'rect', x: 360, y: 80, text: 'End' });
+      editor.addEdge({ from: a.id, to: b.id });
+
+      window.flowchartVersion = VD_FLOWCHART_VERSION;
+      window.toJSON = () => editor.toJSON();
+      window.canUndo = () => editor.canUndo();
+      window.undo = () => editor.undo();
+      window.addNode = () => editor.addNode({ type: 'rect', x: 80, y: 240, text: 'Added' });
+      window.__ready = true;
+    </script>
+  </body>
+</html>
