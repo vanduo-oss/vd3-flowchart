@@ -1494,6 +1494,9 @@ export class VdFlowchart {
       className: 'vd-flowchart-btn',
     });
     this.graphConnectButton.addEventListener('click', () => {
+      if (this.readonly || this.graphNodeSelect.value === this.graphTargetSelect.value) {
+        return;
+      }
       this.addEdge({
         from: this.graphNodeSelect.value,
         to: this.graphTargetSelect.value,

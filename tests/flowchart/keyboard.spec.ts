@@ -54,4 +54,27 @@ describe('keyboard graph access', () => {
     instance.undo();
     expect(instance.toJSON().edges).toHaveLength(0);
   });
+
+  it('associates outline labels with their controls and refuses self-connection', () => {
+    const { instance, element } = editor();
+    const outline = element.querySelector('details')!;
+    outline.open = true;
+    outline.dispatchEvent(new Event('toggle'));
+    const source = element.querySelector<HTMLSelectElement>('[aria-label="Selected node"]')!;
+    const target = element.querySelector<HTMLSelectElement>('[aria-label="Connection target"]')!;
+    const connect = [...outline.querySelectorAll('button')].find(
+      (b) => b.textContent === 'Connect nodes',
+    )!;
+    const sourceLabel = element.querySelector(`label[for="${source.id}"]`);
+    const targetLabel = element.querySelector(`label[for="${target.id}"]`);
+    expect(sourceLabel?.textContent).toBe('Selected node');
+    expect(targetLabel?.textContent).toBe('Connection target');
+    source.value = 'a';
+    source.dispatchEvent(new Event('change'));
+    target.value = 'a';
+    target.dispatchEvent(new Event('change'));
+    expect(connect.disabled).toBe(true);
+    connect.click();
+    expect(instance.toJSON().edges).toHaveLength(0);
+  });
 });
