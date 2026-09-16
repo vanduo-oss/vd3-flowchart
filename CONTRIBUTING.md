@@ -30,6 +30,13 @@ pnpm test:e2e
 `test:types` and `test:e2e` consume `dist/` — run `pnpm build` first.
 Install Chromium once: `pnpm exec playwright install chromium`.
 
+## CI cost
+
+`.github/workflows/ci.yml` is one job with `timeout-minutes: 15`. It runs
+lint, format, stylelint, unit tests, build, skill checks, types, and
+Chromium packaging smoke. GitHub bills minutes used, not the timeout. This
+branch has not been run remotely.
+
 ## OpenSpec
 
 Active changes live in `openspec/changes/`. Archive with

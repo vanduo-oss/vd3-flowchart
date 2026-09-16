@@ -2,6 +2,26 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
+## Unreleased
+
+### Added
+
+- Keyboard canvas navigation (arrows, Home/End, Enter to edit) and a native
+  **Graph outline** with labelled Edit/Connect controls.
+- `FLOWCHART_DOCUMENT_VERSION` owns saved `version`. Package release stays on
+  `VD_FLOWCHART_VERSION`.
+
+### Fixed
+
+- Option updates (read-only, grid, history) keep the live editor, camera,
+  selection, and applicable history. Parent echoes of emitted documents do
+  not loop.
+- Malformed JSON and unsupported future documents throw before the active
+  document, selection, or history change.
+- Graph outline refuses self-connection.
+- Node drag translates the moved SVG node and rebuilds only incident edges;
+  pointer-up still records history.
+
 ## 1.2.0 — 2026-09-13
 
 Extracted from `@vanduo-oss/vd3-cbun@1.4.2` as a standalone package. Component
