@@ -97,6 +97,8 @@ const EDGE_STROKE_PRESETS = [
 ];
 
 export const VD_FLOWCHART_VERSION = '1.2.0';
+/** Serialized schema version; change only when the document format changes. */
+export const FLOWCHART_DOCUMENT_VERSION = '1.2.0';
 export const FLOWCHART_NODE_TYPES = [
   'rounded-rect',
   'rect',
@@ -388,12 +390,31 @@ function normalizeDocument(input) {
     try {
       source = JSON.parse(source);
     } catch {
-      source = {};
+      throw new TypeError('Invalid flowchart JSON. The current document was not changed.');
     }
   }
 
   if (!isPlainObject(source)) {
-    source = {};
+    throw new TypeError('A flowchart document must be an object.');
+  }
+  if (source.version !== undefined) {
+    const parts =
+      typeof source.version === 'string' && /^(\d+)\.(\d+)\.(\d+)$/.exec(source.version);
+    if (
+      !parts ||
+      Number(parts[1]) !== 1 ||
+      Number(parts[2]) > 2 ||
+      (Number(parts[2]) === 2 && Number(parts[3]) > 0)
+    ) {
+      throw new RangeError(
+        `Unsupported flowchart document version: ${String(source.version)}. Supported through ${FLOWCHART_DOCUMENT_VERSION}.`,
+      );
+    }
+  }
+  for (const key of ['nodes', 'edges']) {
+    if (source[key] !== undefined && !Array.isArray(source[key])) {
+      throw new TypeError(`Flowchart ${key} must be an array.`);
+    }
   }
 
   const usedNodeIds = new Set();
@@ -410,7 +431,7 @@ function normalizeDocument(input) {
     .filter(Boolean);
 
   return {
-    version: VD_FLOWCHART_VERSION,
+    version: FLOWCHART_DOCUMENT_VERSION,
     viewport: normalizeViewport(source.viewport),
     nodes,
     edges,
@@ -1005,6 +1026,8 @@ function getBounds(nodes) {
 function createField(labelText, control) {
   const wrapper = createElement('div', { className: 'vd-flowchart-field' });
   const label = createElement('label', { text: labelText });
+  control.id ||= nextId('flowchart-field');
+  label.htmlFor = control.id;
   wrapper.appendChild(label);
   wrapper.appendChild(control);
   return wrapper;
@@ -1432,6 +1455,9 @@ export class VdFlowchart {
     this.jsonActions.appendChild(this.loadJsonButton);
     this.jsonPanel.appendChild(this.jsonTextarea);
     this.jsonPanel.appendChild(this.jsonActions);
+    this.jsonStatus = createElement('p', { className: 'vd-flowchart-json-status' });
+    this.jsonStatus.setAttribute('role', 'status');
+    this.jsonPanel.appendChild(this.jsonStatus);
     this.inspectorPanel.appendChild(this.jsonPanel);
 
     this.body.appendChild(this.palettePanel);
@@ -1440,7 +1466,121 @@ export class VdFlowchart {
 
     this.root.appendChild(this.toolbar);
     this.root.appendChild(this.body);
+    this.buildGraphOutline();
     this.element.appendChild(this.root);
+  }
+
+  buildGraphOutline() {
+    this.graphOutline = createElement('details', { className: 'vd-flowchart-outline' });
+    this.graphOutline.appendChild(createElement('summary', { text: 'Graph outline' }));
+    this.graphOutline.addEventListener('toggle', () => {
+      if (this.graphOutline.open) this.renderGraphOutline();
+    });
+    this.graphStatus = createElement('p', { className: 'vd-flowchart-sr-only' });
+    this.graphStatus.setAttribute('role', 'status');
+    this.canvasEl.appendChild(this.graphStatus);
+    this.graphControls = createElement('div', { className: 'vd-flowchart-outline-controls' });
+    this.graphNodeSelect = createElement('select');
+    this.graphNodeSelect.setAttribute('aria-label', 'Selected node');
+    this.graphNodeSelect.addEventListener('change', () =>
+      this.selectNode(this.graphNodeSelect.value),
+    );
+    this.graphTargetSelect = createElement('select');
+    this.graphTargetSelect.setAttribute('aria-label', 'Connection target');
+    this.graphTargetSelect.addEventListener('change', () => this.renderGraphOutline());
+    this.graphConnectButton = createElement('button', {
+      text: 'Connect nodes',
+      type: 'button',
+      className: 'vd-flowchart-btn',
+    });
+    this.graphConnectButton.addEventListener('click', () => {
+      this.addEdge({
+        from: this.graphNodeSelect.value,
+        to: this.graphTargetSelect.value,
+        autoPort: true,
+      });
+    });
+    this.graphEditButton = createElement('button', {
+      text: 'Edit selected label',
+      type: 'button',
+      className: 'vd-flowchart-btn',
+    });
+    this.graphEditButton.addEventListener('click', () =>
+      this.startTextEdit(this.graphNodeSelect.value),
+    );
+    this.graphControls.append(
+      createField('Selected node', this.graphNodeSelect),
+      createField('Connection target', this.graphTargetSelect),
+      this.graphConnectButton,
+      this.graphEditButton,
+    );
+    this.graphOutline.appendChild(this.graphControls);
+    this.graphList = createElement('ul');
+    this.graphList.setAttribute('aria-label', 'Nodes and connections');
+    this.graphOutline.appendChild(this.graphList);
+    this.root.appendChild(this.graphOutline);
+    this.canvasEl.setAttribute('role', 'group');
+    this.canvasEl.setAttribute(
+      'aria-label',
+      'Diagram canvas. Arrow keys select nodes; Enter edits a label. Graph outline provides connections.',
+    );
+    this.jsonTextarea.setAttribute('aria-label', 'Flowchart JSON');
+  }
+
+  renderGraphOutline() {
+    if (!this.graphOutline) return;
+    const nodes = this.documentData.nodes;
+    const edges = this.documentData.edges;
+    const labels = new Map(nodes.map((node) => [node.id, node.text || node.id]));
+    const selected = this.selection?.kind === 'node' ? this.selection.id : null;
+    this.graphStatus.textContent = selected
+      ? `Selected: ${labels.get(selected)}. ${nodes.length} nodes, ${edges.length} connections.`
+      : `${nodes.length} nodes, ${edges.length} connections.`;
+    if (!this.graphOutline.open) return;
+    const signature = JSON.stringify([
+      nodes.map((node) => [node.id, node.text]),
+      edges.map((edge) => [edge.id, edge.from.nodeId, edge.to.nodeId, edge.label]),
+    ]);
+    if (signature !== this.graphSignature) {
+      this.graphSignature = signature;
+      for (const select of [this.graphNodeSelect, this.graphTargetSelect]) {
+        const previous = select.value;
+        select.replaceChildren();
+        for (const node of nodes)
+          select.appendChild(
+            createElement('option', { value: node.id, text: labels.get(node.id) }),
+          );
+        if (labels.has(previous)) select.value = previous;
+      }
+      this.graphList.replaceChildren();
+      const outgoing = new Map(nodes.map((node) => [node.id, []]));
+      const incoming = new Map(nodes.map((node) => [node.id, []]));
+      for (const edge of edges) {
+        outgoing
+          .get(edge.from.nodeId)
+          ?.push(`${labels.get(edge.to.nodeId)}${edge.label ? ` (${edge.label})` : ''}`);
+        incoming.get(edge.to.nodeId)?.push(labels.get(edge.from.nodeId));
+      }
+      for (const node of nodes) {
+        const to = outgoing.get(node.id);
+        const from = incoming.get(node.id);
+        const relationships = [
+          to.length ? `Connects to ${to.join(', ')}.` : 'No outgoing connections.',
+          from.length ? `Connected from ${from.join(', ')}.` : '',
+        ];
+        this.graphList.appendChild(
+          createElement('li', { text: `${labels.get(node.id)}. ${relationships.join(' ')}` }),
+        );
+      }
+    }
+    if (selected) this.graphNodeSelect.value = selected;
+    this.graphNodeSelect.disabled = nodes.length === 0;
+    this.graphTargetSelect.disabled = this.readonly || nodes.length < 2;
+    this.graphConnectButton.disabled =
+      this.readonly ||
+      nodes.length < 2 ||
+      this.graphNodeSelect.value === this.graphTargetSelect.value;
+    this.graphEditButton.disabled = this.readonly || nodes.length === 0;
   }
 
   bindEvents() {
@@ -1563,7 +1703,12 @@ export class VdFlowchart {
     }
 
     if (action === 'load' && !this.readonly) {
-      this.load(this.jsonTextarea.value);
+      try {
+        this.load(this.jsonTextarea.value);
+        this.jsonStatus.textContent = '';
+      } catch (error) {
+        this.jsonStatus.textContent = error.message;
+      }
     }
   }
 
@@ -1648,7 +1793,6 @@ export class VdFlowchart {
   }
 
   handleKeyDown(event) {
-    if (this.readonly) return;
     if (
       event.target &&
       (event.target.tagName === 'INPUT' ||
@@ -1657,6 +1801,29 @@ export class VdFlowchart {
     ) {
       return;
     }
+
+    if (event.target === this.canvasEl) {
+      const nodes = this.documentData.nodes;
+      const index = nodes.findIndex((node) => node.id === this.selection?.id);
+      let next = -1;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight')
+        next = (index + 1) % nodes.length;
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft')
+        next = index < 0 ? nodes.length - 1 : (index - 1 + nodes.length) % nodes.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = nodes.length - 1;
+      if (nodes[next]) {
+        event.preventDefault();
+        this.selectNode(nodes[next].id);
+        return;
+      }
+      if (event.key === 'Enter' && !this.readonly && this.selection?.kind === 'node') {
+        event.preventDefault();
+        this.startTextEdit(this.selection.id);
+        return;
+      }
+    }
+    if (this.readonly) return;
 
     if (event.key === 'Escape' && this.activeTool) {
       event.preventDefault();
@@ -1985,7 +2152,7 @@ export class VdFlowchart {
         node.x = nextX;
         node.y = nextY;
         this.interaction.moved = true;
-        this.render({ inspector: false, json: false });
+        this.renderDraggedNode(node);
       }
       return;
     }
@@ -2434,11 +2601,13 @@ export class VdFlowchart {
       if (event.key === 'Escape') {
         event.preventDefault();
         this.stopTextEdit({ commit: false });
+        this.canvasEl.focus();
         return;
       }
       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
         event.preventDefault();
         this.stopTextEdit({ commit: true });
+        this.canvasEl.focus();
       }
     });
     textarea.addEventListener('blur', () => {
@@ -2525,6 +2694,7 @@ export class VdFlowchart {
     if (shouldRenderScene) this.renderScene();
     if (shouldRenderInspector) this.renderSelectionPanel();
     if (shouldRenderJson) this.syncJsonTextarea();
+    if (shouldRenderInspector) this.renderGraphOutline();
     this.updateToolbarLabel();
     this.updatePaletteState();
     this.positionTextEditor();
@@ -2543,10 +2713,21 @@ export class VdFlowchart {
     clearChildren(this.overlayLayer);
 
     const nodeMap = new Map(this.documentData.nodes.map((node) => [node.id, node]));
+    this.sceneNodeMap = nodeMap;
+    this.nodeElements = new Map();
+    this.edgeElements = new Map();
+    this.incidentEdges = new Map();
 
     this.documentData.edges.forEach((edge) => {
       const edgeElement = this.renderEdge(edge, nodeMap);
-      if (edgeElement) this.edgesLayer.appendChild(edgeElement);
+      if (edgeElement) {
+        this.edgesLayer.appendChild(edgeElement);
+        this.edgeElements.set(edge.id, edgeElement);
+        for (const id of new Set([edge.from.nodeId, edge.to.nodeId])) {
+          if (!this.incidentEdges.has(id)) this.incidentEdges.set(id, []);
+          this.incidentEdges.get(id).push(edge);
+        }
+      }
     });
 
     if (this.interaction?.kind === 'connect' || this.interaction?.kind === 'reconnect') {
@@ -2554,7 +2735,9 @@ export class VdFlowchart {
     }
 
     this.documentData.nodes.forEach((node) => {
-      this.nodesLayer.appendChild(this.renderNode(node));
+      const element = this.renderNode(node);
+      this.nodesLayer.appendChild(element);
+      this.nodeElements.set(node.id, element);
     });
 
     if (this.reconnectEdgeId && !this.readonly) {
@@ -2571,6 +2754,26 @@ export class VdFlowchart {
     }
 
     this.syncConnectingState();
+  }
+
+  // Drag frames change one translation and its connected paths. Keep unrelated
+  // SVG elements intact; the release event still refreshes inspector/history.
+  renderDraggedNode(node) {
+    const element = this.nodeElements?.get(node.id);
+    if (!element) {
+      this.render({ inspector: false, json: false });
+      return;
+    }
+    element.setAttribute('transform', `translate(${formatNumber(node.x)} ${formatNumber(node.y)})`);
+    element.classList.add('is-dragging');
+    for (const edge of this.incidentEdges.get(node.id) || []) {
+      const previous = this.edgeElements.get(edge.id);
+      const next = this.renderEdge(edge, this.sceneNodeMap);
+      if (previous && next) {
+        previous.replaceWith(next);
+        this.edgeElements.set(edge.id, next);
+      }
+    }
   }
 
   applyEdgeMarkers(pathElement, edge) {
@@ -3753,21 +3956,74 @@ export class VdFlowchart {
     return this;
   }
 
+  updateOptions(options = {}) {
+    if (this.destroyed) return this;
+    if ('readonly' in options) {
+      if (options.readonly && !this.readonly) {
+        this.stopTextEdit({ commit: true });
+        this.interaction = null;
+        this.activeTool = null;
+        this.reconnectEdgeId = null;
+      }
+      this.readonly = Boolean(options.readonly);
+      this.root.classList.toggle('vd-flowchart-readonly', this.readonly);
+      this.arrangeSelect.disabled = this.readonly;
+      this.clearButton.disabled = this.readonly;
+      this.loadJsonButton.disabled = this.readonly;
+    }
+    if ('gridSize' in options) {
+      this.gridSize = clamp(toFiniteNumber(options.gridSize, DEFAULT_GRID_SIZE), 12, 64);
+      const pattern = this.svg.querySelector('pattern');
+      pattern.setAttribute('width', this.gridSize);
+      pattern.setAttribute('height', this.gridSize);
+      pattern
+        .querySelector('path')
+        .setAttribute('d', `M ${this.gridSize} 0 L 0 0 0 ${this.gridSize}`);
+    }
+    // autoFit is a readiness preference, not a request to reset the camera.
+    if ('autoFit' in options) this.autoFit = Boolean(options.autoFit);
+    if ('history' in options && (options.history !== false) !== this.historyEnabled) {
+      this.historyEnabled = options.history !== false;
+      this.history = [];
+      this.historyIndex = -1;
+      this.seedHistory();
+    }
+    if ('historyLimit' in options) {
+      this.historyLimit = Math.max(1, Math.floor(toFiniteNumber(options.historyLimit, 100)));
+      if (this.history.length > this.historyLimit) {
+        const start = Math.max(0, this.historyIndex - this.historyLimit + 1);
+        this.history = this.history.slice(start, start + this.historyLimit);
+        this.historyIndex -= start;
+      }
+    }
+    this.render();
+    this.updateHistoryButtons();
+    return this;
+  }
+
   load(data, options = {}) {
+    const documentData = normalizeDocument(data);
+    if (options.silent && JSON.stringify(documentData) === JSON.stringify(this.documentData)) {
+      return this;
+    }
     this.stopTextEdit({ commit: false });
     this.activeTool = null;
     this.reconnectEdgeId = null;
     const previousSelection = this.selection;
-    this.documentData = normalizeDocument(data);
+    this.documentData = documentData;
     this.selection = this.resolvePreservedSelection(previousSelection, options.preserveSelection);
     this.render();
-    this.emitChange('load');
+    if (options.silent) {
+      if (this.historyEnabled) this.recordHistory('load');
+    } else {
+      this.emitChange('load');
+    }
     return this;
   }
 
   toJSON() {
     return deepClone({
-      version: VD_FLOWCHART_VERSION,
+      version: FLOWCHART_DOCUMENT_VERSION,
       viewport: this.documentData.viewport,
       nodes: this.documentData.nodes,
       edges: this.documentData.edges,
@@ -3782,6 +4038,10 @@ export class VdFlowchart {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     this.unbindEvents();
+    this.sceneNodeMap?.clear();
+    this.nodeElements?.clear();
+    this.edgeElements?.clear();
+    this.incidentEdges?.clear();
     this.element.innerHTML = '';
     this.element.classList.remove('vd-flowchart-host');
   }

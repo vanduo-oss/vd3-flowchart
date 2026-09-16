@@ -28,7 +28,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./css": "./dist/vd3-flowchart.css",
+    "./css": {
+      "types": "./styles.d.ts",
+      "default": "./dist/vd3-flowchart.css"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -36,7 +39,9 @@
     "README.md",
     "SKILL.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "recipes",
+    "styles.d.ts"
   ],
   "keywords": [
     "vanduo",
@@ -57,7 +62,8 @@
     "test:types": "tsc --noEmit -p tests/types/tsconfig.json",
     "test:e2e": "playwright test",
     "prepack": "pnpm run build",
-    "release": "pnpm run build && pnpm publish"
+    "release": "pnpm run build && pnpm publish",
+    "test:skills": "node scripts/check-skills.mjs"
   },
   "peerDependencies": {
     "vue": ">=3.3.0"

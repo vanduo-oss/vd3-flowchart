@@ -4,11 +4,12 @@
 // stubs (tests/setup.ts). We assert the wrapper: builds the editor core into
 // its own container on mount, threads props through as core options, forwards
 // the core's events (change / connect / ready) as Vue emits, drives `data`
-// changes through load() without recreating, recreates on option changes, and
+// changes through load() without recreating, updates options in place, and
 // destroys the core (removing its window listeners) on unmount. The core's
 // `ready` fires only once the canvas reports a non-zero size, so those tests
 // stub clientWidth/clientHeight — jsdom lays nothing out.
 
+import { defineComponent, h, ref } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -127,17 +128,82 @@ describe('VdFlowchart wrapper — data prop drives load() (no recreate)', () => 
   });
 });
 
-describe('VdFlowchart wrapper — option prop change recreates the core', () => {
-  it('destroys and rebuilds the editor when `readonly` toggles', async () => {
-    const wrapper = mountFlow({ readonly: false });
-    const first = coreOf(wrapper);
+describe('VdFlowchart wrapper — state ownership', () => {
+  it('preserves edits, camera, selection and undo across option changes', async () => {
+    const wrapper = mountFlow({ data: { nodes: [{ id: 'a', text: 'Initial' }] } });
+    const core = coreOf(wrapper);
+    core.addNode({ id: 'b', text: 'Edited' });
+    core.addEdge({ id: 'ab', from: 'a', to: 'b' });
+    core.selectNode('b');
+    core.setViewport({ x: 120, y: 90, scale: 0.8 });
+    const before = core.toJSON();
+    await wrapper.setProps({ readonly: true, gridSize: 32, autoFit: true });
+    expect(coreOf(wrapper)).toBe(core);
+    expect(core.destroyed).toBe(false);
+    expect(core.toJSON()).toEqual(before);
+    expect(core.selection).toEqual({ kind: 'node', id: 'b' });
+    expect(core.root.classList.contains('vd-flowchart-readonly')).toBe(true);
+    expect(core.svg.querySelector('pattern').getAttribute('width')).toBe('32');
+    await wrapper.setProps({ readonly: false });
+    core.undo();
+    expect(core.toJSON().nodes).toHaveLength(2);
+    expect(core.toJSON().edges).toHaveLength(0);
+    expect(core.toJSON().viewport).toEqual(before.viewport);
+  });
 
-    await wrapper.setProps({ readonly: true });
+  it('accepts a parent change echo once without a load event or extra history', async () => {
+    const data = ref({ nodes: [{ id: 'a', text: 'Initial' }] });
+    let changes = 0;
+    const parent = mount(
+      defineComponent({
+        setup: () => () =>
+          h(VdFlowchart, {
+            data: data.value,
+            onChange: (event: { document: typeof data.value }) => {
+              changes += 1;
+              if (changes < 5) data.value = event.document;
+            },
+          }),
+      }),
+    );
+    wrappers.push(parent);
+    const core = coreOf(parent.findComponent(VdFlowchart));
+    core.addNode({ id: 'b' });
+    core.selectNode('b');
+    await flushPromises();
+    expect(changes).toBe(1);
+    expect(core.selection).toEqual({ kind: 'node', id: 'b' });
+    core.undo();
+    await flushPromises();
+    expect(changes).toBe(2);
+    expect(core.toJSON().nodes.map((node) => node.id)).toEqual(['a']);
+    expect(core.canUndo()).toBe(false);
+  });
 
-    const second = coreOf(wrapper);
-    expect(second).not.toBe(first);
-    expect(first.destroyed).toBe(true);
-    expect(second.readonly).toBe(true);
+  it('replaces external data silently and keeps the replacement undoable', async () => {
+    const wrapper = mountFlow({ data: { nodes: [{ id: 'a' }] } });
+    const core = coreOf(wrapper);
+    await wrapper.setProps({ data: { nodes: [{ id: 'b' }] } });
+    expect(wrapper.emitted('change')).toBeUndefined();
+    core.undo();
+    expect(core.toJSON().nodes[0].id).toBe('a');
+  });
+
+  it('seeds fresh history after disabled edits and bounds history around the current entry', async () => {
+    const wrapper = mountFlow();
+    const core = coreOf(wrapper);
+    core.addNode({ id: 'a' });
+    await wrapper.setProps({ history: false });
+    core.addNode({ id: 'b' });
+    await wrapper.setProps({ history: true });
+    expect(core.canUndo()).toBe(false);
+    core.addNode({ id: 'c' });
+    core.addNode({ id: 'd' });
+    core.undo();
+    await wrapper.setProps({ historyLimit: 2 });
+    expect(core.toJSON().nodes).toHaveLength(3);
+    core.undo();
+    expect(core.toJSON().nodes).toHaveLength(2);
   });
 });
 

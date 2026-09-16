@@ -14,6 +14,7 @@ import fixtureDoc from '../fixtures/flowchart-doc-1.1.json';
 import {
   VdFlowchart as VdFlowchartCore,
   VD_FLOWCHART_VERSION,
+  FLOWCHART_DOCUMENT_VERSION,
   MAX_NODES,
   MAX_EDGES,
 } from '../../src/core.js';
@@ -217,5 +218,41 @@ describe('flowchart serialization — bounded deserialization (untrusted documen
     expect(doc.nodes.map((n: { id: string }) => n.id)).toEqual([a.id, b.id]);
     expect(doc.edges).toHaveLength(1);
     expect(doc.version).toBe('1.2.0');
+  });
+});
+
+describe('document validation preserves current work', () => {
+  it.each([
+    '{broken',
+    'null',
+    '[]',
+    '{"nodes":{}}',
+    '{"edges":42}',
+    '{"version":"2.0.0"}',
+    '{"version":"1.2.1"}',
+    '{"version":"unknown"}',
+  ])('rejects %s atomically', (input) => {
+    const core = makeCore();
+    core.addNode({ id: 'saved', text: 'Keep me' });
+    core.selectNode('saved');
+    const before = core.toJSON();
+    const historyIndex = core.historyIndex;
+    expect(() => core.load(input)).toThrow();
+    expect(core.toJSON()).toEqual(before);
+    expect(core.selection).toEqual({ kind: 'node', id: 'saved' });
+    expect(core.historyIndex).toBe(historyIndex);
+  });
+
+  it('uses the schema constant for saved documents', () => {
+    const core = makeCore();
+    expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
+  });
+
+  it('reports invalid pasted JSON without clearing the graph', () => {
+    const core = makeCore({ data: { nodes: [{ id: 'a' }] } });
+    core.jsonTextarea.value = '{broken';
+    core.loadJsonButton.click();
+    expect(core.jsonStatus.textContent).toContain('Invalid flowchart JSON');
+    expect(core.toJSON().nodes[0].id).toBe('a');
   });
 });

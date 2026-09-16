@@ -1,47 +1,40 @@
 ---
 name: vanduo-vd3-flowchart
-description: Use when adding Vanduo Vue 3 flowchart with @vanduo-oss/vd3-flowchart — node/edge editor, undo/redo, layout modes, and a framework-agnostic core. Covers install, CSS, theming, and the load-bearing VD_FLOWCHART_VERSION 1.2.0.
+description: Integrate @vanduo-oss/vd3-flowchart into Vue 3 apps with controlled documents, editing, layouts, undo, and JSON persistence.
 ---
 
-# @vanduo-oss/vd3-flowchart
+# Vanduo flowchart
 
-Standalone Vue 3 flowchart package. `vue >=3.3.0` is a required peer. The root
-import re-exports the Vue wrapper AND the framework-agnostic core
-(`VdFlowchartCore`). `VD_FLOWCHART_VERSION` is `1.2.0` and matches
-`package.json`.
+Install `@vanduo-oss/vd3-flowchart` alongside Vue. Import `VdFlowchart` and
+`@vanduo-oss/vd3-flowchart/css`; no global registration is needed. Styles have
+token fallbacks. In a VD3 app, share the base stylesheet already imported at
+app entry; choose `/css` or `/css/core`, not both.
 
-## Install
+Start from [the complete editor recipe](recipes/editor.vue). It includes two
+nodes, an edge, a controlled `data` prop, change events, read-only state, and undo.
+Give the editor a definite height. Set `auto-fit` for its first measurable layout.
 
-```sh
-pnpm add @vanduo-oss/vd3-flowchart
-```
+## State and persistence
 
-Nothing registers globally. For correct theming, provide the Vanduo `--vd-*`
-design tokens (see [Theming](#theming)).
+Local edits emit `change` with `{ reason, document }`. Feeding `document` back
+into `data` is safe. External replacements are silent and undoable; identical
+echoes preserve selection/history. Ordinary option changes keep the live editor.
+Disabling history clears it; reenabling starts from the current document.
 
-## Flowchart
+Save `event.document` or `getInstance().toJSON()`. Core `load()` emits by default;
+catch validation errors so a failed import can be reported to the user. Unknown
+future versions and malformed JSON are rejected before changing current work.
+`FLOWCHART_DOCUMENT_VERSION` describes saved JSON; `VD_FLOWCHART_VERSION`
+describes the package release. Do not replace document versions with app versions.
 
-```js
-import { VdFlowchart, VdFlowchartCore } from '@vanduo-oss/vd3-flowchart';
-import '@vanduo-oss/vd3-flowchart/css';
-```
+## Verification
 
-`VdFlowchart` is the Vue 3 wrapper; the framework-agnostic editor core is the
-same class name upstream, so it is re-exported as `VdFlowchartCore`. The entry
-also re-exports `computeLayout`, `LAYOUT_MODES`, and the `FLOWCHART_*` constant
-tables (`FLOWCHART_NODE_TYPES`, `FLOWCHART_PORTS`, `FLOWCHART_EDGE_MARKERS`,
-`FLOWCHART_EDGE_ROUTES`) plus `VD_FLOWCHART_VERSION`. CSS ships at
-`@vanduo-oss/vd3-flowchart/css`. `VD_FLOWCHART_VERSION` is `1.2.0` — it
-continues the old-line lineage (never reset to `1.0.0`) because the value is
-serialized into user documents via `toJSON().version`; resetting it would
-mislabel documents saved by the old line.
+Add a node, toggle read-only, and confirm the edit remains. Undo/redo, save/reload,
+and echo a change back through `data`. With only the keyboard, select nodes using
+canvas arrows, edit with Enter, save with Ctrl/Cmd+Enter, and use Graph outline
+to read relationships and connect nodes. Check the consumer's screen reader.
 
-## Theming
-
-Flowchart uses `--vd-*` tokens (via `--vd-flowchart-*` locals) with built-in
-fallbacks. vd3 is not a package dependency.
-
-```js
-import '@vanduo-oss/vd3/css';
-import '@vanduo-oss/vd3/css/core';
-```
+Use [Vue declarations](dist/vue.d.ts) for component props/events/exposed methods
+and [core declarations](dist/core.d.ts) for document types and editor methods.
+Core `VdFlowchartCore` requires a browser element and explicit `destroy()`;
+the Vue wrapper mounts and cleans it up automatically.

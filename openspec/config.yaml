@@ -10,8 +10,9 @@ context: |
   (esm+cjs, external: ['vue'], no minify), styles.css copied to
   dist/vd3-flowchart.css. vue >=3.3 is a REQUIRED peer.
   sideEffects: ["**/*.css"].
-  Version: package.json version IS VD_FLOWCHART_VERSION (1.2.0). Load-bearing —
-  serialized into documents via toJSON().version. Do not reset it.
+  Version: package.json version IS VD_FLOWCHART_VERSION (1.2.0).
+  FLOWCHART_DOCUMENT_VERSION (1.2.0) is the independent serialized schema version.
+  Preserve old fixtures and reject unsupported future formats before mutation.
   Tests: vitest + @vue/test-utils + jsdom, Playwright smoke against built dist/,
   tsc type tests via package self-reference.
   vd3-cbun is READ-ONLY reference. Do not publish openspec/ to npm.
