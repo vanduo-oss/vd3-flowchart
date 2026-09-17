@@ -103,7 +103,6 @@ synchronous operation; drag used 24 pointer steps. Times include forced layout
 and exclude compositor paint. These are observations, not supported-size
 guarantees.
 
-- Bar chart update with a data table: 100 / 500 / 1,000 / 2,500 rows → 1.7 / 8.4 / 17.5 / 47.4 ms median.
 - Graph label edit: 25 / 100 / 250 / 500 nodes → 2.9 / 11.2 / 29.9 / 57 ms.
 - Graph undo + redo: 3.6 / 14 / 34.5 / 69.8 ms.
 - Graph tree/grid layout: 2.9 / 11.1 / 28.4 / 58.9 ms.

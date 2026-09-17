@@ -384,6 +384,31 @@ function normalizeEdge(rawEdge, index, nodeIds, usedIds) {
   return edge;
 }
 
+function parseDocumentVersion(value) {
+  const raw =
+    typeof value === 'number' && Number.isFinite(value)
+      ? String(value)
+      : typeof value === 'string'
+        ? value.trim()
+        : '';
+  const match = /^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/.exec(raw);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2] ?? 0),
+    patch: Number(match[3] ?? 0),
+  };
+}
+
+function isSupportedDocumentVersion(value) {
+  const parsed = parseDocumentVersion(value);
+  const max = parseDocumentVersion(FLOWCHART_DOCUMENT_VERSION);
+  if (!parsed || !max || parsed.major !== max.major) return false;
+  if (parsed.minor > max.minor) return false;
+  if (parsed.minor === max.minor && parsed.patch > max.patch) return false;
+  return true;
+}
+
 function normalizeDocument(input) {
   let source = input;
   if (typeof source === 'string') {
@@ -397,19 +422,10 @@ function normalizeDocument(input) {
   if (!isPlainObject(source)) {
     throw new TypeError('A flowchart document must be an object.');
   }
-  if (source.version !== undefined) {
-    const parts =
-      typeof source.version === 'string' && /^(\d+)\.(\d+)\.(\d+)$/.exec(source.version);
-    if (
-      !parts ||
-      Number(parts[1]) !== 1 ||
-      Number(parts[2]) > 2 ||
-      (Number(parts[2]) === 2 && Number(parts[3]) > 0)
-    ) {
-      throw new RangeError(
-        `Unsupported flowchart document version: ${String(source.version)}. Supported through ${FLOWCHART_DOCUMENT_VERSION}.`,
-      );
-    }
+  if (source.version !== undefined && !isSupportedDocumentVersion(source.version)) {
+    throw new RangeError(
+      `Unsupported flowchart document version: ${String(source.version)}. Supported through ${FLOWCHART_DOCUMENT_VERSION}.`,
+    );
   }
   for (const key of ['nodes', 'edges']) {
     if (source[key] !== undefined && !Array.isArray(source[key])) {

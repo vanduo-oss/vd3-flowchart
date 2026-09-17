@@ -352,8 +352,7 @@
 .vd-flowchart-field input:focus-visible,
 .vd-flowchart-field select:focus-visible,
 .vd-flowchart-field textarea:focus-visible,
-.vd-flowchart-json textarea:focus-visible,
-.vd-flowchart-canvas:focus-visible {
+.vd-flowchart-json textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--vd-flowchart-accent) 72%, transparent);
   outline-offset: 2px;
 }
@@ -747,7 +746,8 @@
   gap: 0.5rem;
 }
 
-.vd-flowchart-outline select {
+.vd-flowchart-host .vd-flowchart-outline select,
+.vd-flowchart-shell .vd-flowchart-outline select {
   max-width: 16rem;
   color: var(--vd-flowchart-text);
   background: var(--vd-flowchart-surface);

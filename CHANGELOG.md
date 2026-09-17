@@ -17,7 +17,8 @@ All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
   selection, and applicable history. Parent echoes of emitted documents do
   not loop.
 - Malformed JSON and unsupported future documents throw before the active
-  document, selection, or history change.
+  document, selection, or history change. Unversioned input and numeric or
+  shortened 1.x versions through 1.2.0 still load.
 - Graph outline refuses self-connection.
 - Node drag translates the moved SVG node and rebuilds only incident edges;
   pointer-up still records history.

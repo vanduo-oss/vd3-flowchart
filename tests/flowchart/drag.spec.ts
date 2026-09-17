@@ -32,6 +32,11 @@ function editor() {
           from: { nodeId: 'a', port: 'right' },
           to: { nodeId: 'b', port: 'left' },
         },
+        {
+          id: 'bc',
+          from: { nodeId: 'b', port: 'bottom' },
+          to: { nodeId: 'c', port: 'top' },
+        },
       ],
     },
   }) as AnyEditor;
@@ -80,6 +85,7 @@ describe('drag-node incremental render', () => {
     const unrelated = instance.nodeElements.get('c')!;
     const connected = instance.nodeElements.get('b')!;
     const incident = instance.edgeElements.get('ab')!;
+    const nonIncident = instance.edgeElements.get('bc')!;
     const unrelatedPath = unrelated.outerHTML;
     const connectedPathBefore = incident.querySelector('path')?.getAttribute('d');
 
@@ -89,6 +95,7 @@ describe('drag-node incremental render', () => {
     expect(instance.nodeElements.get('c')).toBe(unrelated);
     expect(instance.nodeElements.get('b')).toBe(connected);
     expect(instance.edgeElements.get('ab')).not.toBe(incident);
+    expect(instance.edgeElements.get('bc')).toBe(nonIncident);
     expect(dragged.getAttribute('transform')).toBe('translate(160 90)');
     expect(dragged.classList.contains('is-dragging')).toBe(true);
     expect(unrelated.outerHTML).toBe(unrelatedPath);

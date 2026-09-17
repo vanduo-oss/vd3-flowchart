@@ -252,6 +252,19 @@ describe('document validation preserves current work', () => {
     expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
   });
 
+  it.each(['1', '1.2', 1.2, '1.1.0'])('accepts legacy 1.x version %j', (version) => {
+    const core = makeCore();
+    expect(() =>
+      core.load({
+        version,
+        nodes: [{ id: 'legacy', text: 'Old' }],
+        edges: [],
+      }),
+    ).not.toThrow();
+    expect(core.toJSON().nodes[0].id).toBe('legacy');
+    expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
+  });
+
   it('reports invalid pasted JSON without clearing the graph', () => {
     const core = makeCore({ data: { nodes: [{ id: 'a' }] } });
     core.jsonTextarea.value = '{broken';
