@@ -3,7 +3,7 @@ import { expect, test, type ConsoleMessage } from '@playwright/test';
 // Real-browser packaging smoke: the fixture imports the BUILT dist ESM entry
 // (/dist/index.js, with `vue` resolved locally via an import map) and mounts
 // the framework-agnostic flowchart core with a seeded document. Asserts host
-// shell, version 1.2.0, seeded nodes, toJSON().version, undo, and zero console
+// shell, VD_FLOWCHART_VERSION 1.3.0, seeded nodes, toJSON().version 1.2.0, undo, and zero console
 // errors.
 
 interface FlowchartWindow {
@@ -37,7 +37,7 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     const version = await page.evaluate(
       () => (window as unknown as FlowchartWindow).flowchartVersion,
     );
-    expect(version).toBe('1.2.0');
+    expect(version).toBe('1.3.0');
   });
 
   test('renders seeded nodes and serializes version 1.2.0', async ({ page }) => {

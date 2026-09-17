@@ -2,7 +2,7 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
-## Unreleased
+## 1.3.0 — 2026-09-17
 
 ### Added
 

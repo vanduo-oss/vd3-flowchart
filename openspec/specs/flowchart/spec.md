@@ -36,9 +36,10 @@ verbatim outside the excision map. The entry MUST use named exports only.
 
 ### Requirement: flowchart serialization stays on the 1.2.0 lineage
 
-`VD_FLOWCHART_VERSION` SHALL remain `'1.2.0'` — the constant is load-bearing
-because `toJSON()` serializes it into user documents as `version` — and MUST
-equal `package.json` `version`. `toJSON()` SHALL
+`FLOWCHART_DOCUMENT_VERSION` SHALL remain `'1.2.0'` — the constant is
+load-bearing because `toJSON()` serializes it into user documents as
+`version`. `VD_FLOWCHART_VERSION` MUST equal `package.json` `version` and
+MUST be `'1.3.0'`. `toJSON()` SHALL
 keep the `{ version, viewport, nodes, edges }` document shape, and `load()`
 MUST continue to accept documents produced by the old-line
 `@vanduo-oss/flowchart` 1.x releases (normalization of missing/legacy fields
@@ -182,7 +183,7 @@ chrome through `--vd-bg-primary` / `--vd-bg-secondary` (and related `--vd-*`
 border tokens) via `--vd-flowchart-*` locals. It MUST NOT blend chrome fills
 toward fixed light cream/white hexes (`#ffffff`, `#efe7d4`, `#f5ecd8`, and
 similar) so dark mode stays coherent with the host palette.
-`VD_FLOWCHART_VERSION` MUST remain `'1.2.0'` (serialization unchanged).
+`FLOWCHART_DOCUMENT_VERSION` MUST remain `'1.2.0'` (serialization unchanged).
 
 #### Scenario: panel and node fills read bg tokens
 
@@ -206,7 +207,7 @@ The Playwright smoke suite SHALL include a flowchart spec running against a
 harness page that imports the BUILT `dist/index.js` (ESM, with an import map
 resolving the external `vue` specifier). It MUST assert: the host shell
 mounts (`.vd-flowchart-host`, `.vd-flowchart-shell`, `svg.vd-flowchart-svg`),
-`VD_FLOWCHART_VERSION` is `'1.2.0'`, a seeded document renders nodes, 
+`VD_FLOWCHART_VERSION` is `'1.3.0'`, a seeded document renders nodes, 
 `toJSON().version` is `'1.2.0'`, undo reverts a committed add, and the page
 logs zero console errors.
 

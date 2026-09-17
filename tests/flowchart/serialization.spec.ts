@@ -38,8 +38,12 @@ afterEach(() => {
 });
 
 describe('flowchart serialization — VERSION manifest sync', () => {
-  it('exposes VD_FLOWCHART_VERSION === "1.2.0"', () => {
-    expect(VD_FLOWCHART_VERSION).toBe('1.2.0');
+  it('exposes VD_FLOWCHART_VERSION === "1.3.0"', () => {
+    expect(VD_FLOWCHART_VERSION).toBe('1.3.0');
+  });
+
+  it('keeps FLOWCHART_DOCUMENT_VERSION at 1.2.0', () => {
+    expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.2.0');
   });
 
   it('mirrors package.json version', () => {

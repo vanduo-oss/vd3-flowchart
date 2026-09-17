@@ -6,10 +6,9 @@ Vanduo **flowchart** for Vue 3: a node/edge editor with undo/redo, layout
 modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
-**Status: 1.2.0.** `VD_FLOWCHART_VERSION` tracks the package release.
-`FLOWCHART_DOCUMENT_VERSION` (currently also `1.2.0`) is the value
-`toJSON()` writes. Do not reset either independently without a compatibility
-plan.
+**Status: 1.3.0.** `VD_FLOWCHART_VERSION` tracks the package release.
+`FLOWCHART_DOCUMENT_VERSION` (currently `1.2.0`) is the value `toJSON()`
+writes. Do not reset either independently without a compatibility plan.
 
 ## Install
 
@@ -50,7 +49,7 @@ if anything but `vue` is externalized. The package declares
 
 ## Version policy
 
-`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.2.0`). Bump those
+`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.3.0`). Bump those
 together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
 unless the serialized schema changes; add fixtures and explicit compatibility
 rules for a format change. Unversioned 1.x documents through 1.2.0 still load.
