@@ -44,7 +44,7 @@
 .vd-flowchart-shell {
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
   /* Fill the host only — a fixed min-height here overflowed short containers
      and clipped the bottom outline off-screen. */
@@ -352,8 +352,7 @@
 .vd-flowchart-field input:focus-visible,
 .vd-flowchart-field select:focus-visible,
 .vd-flowchart-field textarea:focus-visible,
-.vd-flowchart-json textarea:focus-visible,
-.vd-flowchart-canvas:focus-visible {
+.vd-flowchart-json textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--vd-flowchart-accent) 72%, transparent);
   outline-offset: 2px;
 }
@@ -726,4 +725,46 @@
   .vd-flowchart-palette {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+.vd-flowchart-outline {
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.5rem 0.9rem;
+  border-top: 1px solid var(--vd-flowchart-border);
+  background: var(--vd-flowchart-panel);
+  font-size: 0.875rem;
+}
+
+.vd-flowchart-outline summary {
+  cursor: pointer;
+}
+
+.vd-flowchart-outline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.vd-flowchart-host .vd-flowchart-outline select,
+.vd-flowchart-shell .vd-flowchart-outline select {
+  max-width: 16rem;
+  color: var(--vd-flowchart-text);
+  background: var(--vd-flowchart-surface);
+}
+
+.vd-flowchart-outline :focus-visible,
+.vd-flowchart-canvas:focus-visible {
+  outline: 2px solid var(--vd-flowchart-accent);
+  outline-offset: -2px;
+}
+
+.vd-flowchart-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

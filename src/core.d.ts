@@ -134,6 +134,8 @@ export interface MutationOptions {
 export interface LoadOptions {
   /** Keep the prior selection if the entity still exists after load. */
   preserveSelection?: boolean;
+  /** Suppress change notification; an identical document is a no-op. Used by Vue data updates. */
+  silent?: boolean;
 }
 
 export interface RemoveNodeOptions {
@@ -269,6 +271,13 @@ export class VdFlowchart {
   stopTextEdit(options?: { commit?: boolean }): void;
 
   // Lifecycle
+  /** Update editor options without replacing the document, camera or selection. */
+  updateOptions(
+    options: Pick<
+      VdFlowchartOptions,
+      'readonly' | 'gridSize' | 'autoFit' | 'history' | 'historyLimit'
+    >,
+  ): this;
   destroy(): void;
 }
 
@@ -282,6 +291,8 @@ export function computeLayout(
 export const LAYOUT_MODES: readonly LayoutMode[];
 
 export const VD_FLOWCHART_VERSION: string;
+/** Schema version used by toJSON(), independent of the package release. */
+export const FLOWCHART_DOCUMENT_VERSION: string;
 export const FLOWCHART_NODE_TYPES: readonly FlowchartNodeType[];
 export const FLOWCHART_PORTS: readonly FlowchartPort[];
 export const FLOWCHART_EDGE_MARKERS: readonly FlowchartEdgeMarker[];

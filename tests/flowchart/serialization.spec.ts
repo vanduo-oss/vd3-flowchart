@@ -14,6 +14,7 @@ import fixtureDoc from '../fixtures/flowchart-doc-1.1.json';
 import {
   VdFlowchart as VdFlowchartCore,
   VD_FLOWCHART_VERSION,
+  FLOWCHART_DOCUMENT_VERSION,
   MAX_NODES,
   MAX_EDGES,
 } from '../../src/core.js';
@@ -37,8 +38,12 @@ afterEach(() => {
 });
 
 describe('flowchart serialization — VERSION manifest sync', () => {
-  it('exposes VD_FLOWCHART_VERSION === "1.2.0"', () => {
-    expect(VD_FLOWCHART_VERSION).toBe('1.2.0');
+  it('exposes VD_FLOWCHART_VERSION === "1.3.0"', () => {
+    expect(VD_FLOWCHART_VERSION).toBe('1.3.0');
+  });
+
+  it('keeps FLOWCHART_DOCUMENT_VERSION at 1.2.0', () => {
+    expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.2.0');
   });
 
   it('mirrors package.json version', () => {
@@ -217,5 +222,54 @@ describe('flowchart serialization — bounded deserialization (untrusted documen
     expect(doc.nodes.map((n: { id: string }) => n.id)).toEqual([a.id, b.id]);
     expect(doc.edges).toHaveLength(1);
     expect(doc.version).toBe('1.2.0');
+  });
+});
+
+describe('document validation preserves current work', () => {
+  it.each([
+    '{broken',
+    'null',
+    '[]',
+    '{"nodes":{}}',
+    '{"edges":42}',
+    '{"version":"2.0.0"}',
+    '{"version":"1.2.1"}',
+    '{"version":"unknown"}',
+  ])('rejects %s atomically', (input) => {
+    const core = makeCore();
+    core.addNode({ id: 'saved', text: 'Keep me' });
+    core.selectNode('saved');
+    const before = core.toJSON();
+    const historyIndex = core.historyIndex;
+    expect(() => core.load(input)).toThrow();
+    expect(core.toJSON()).toEqual(before);
+    expect(core.selection).toEqual({ kind: 'node', id: 'saved' });
+    expect(core.historyIndex).toBe(historyIndex);
+  });
+
+  it('uses the schema constant for saved documents', () => {
+    const core = makeCore();
+    expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
+  });
+
+  it.each(['1', '1.2', 1.2, '1.1.0'])('accepts legacy 1.x version %j', (version) => {
+    const core = makeCore();
+    expect(() =>
+      core.load({
+        version,
+        nodes: [{ id: 'legacy', text: 'Old' }],
+        edges: [],
+      }),
+    ).not.toThrow();
+    expect(core.toJSON().nodes[0].id).toBe('legacy');
+    expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
+  });
+
+  it('reports invalid pasted JSON without clearing the graph', () => {
+    const core = makeCore({ data: { nodes: [{ id: 'a' }] } });
+    core.jsonTextarea.value = '{broken';
+    core.loadJsonButton.click();
+    expect(core.jsonStatus.textContent).toContain('Invalid flowchart JSON');
+    expect(core.toJSON().nodes[0].id).toBe('a');
   });
 });

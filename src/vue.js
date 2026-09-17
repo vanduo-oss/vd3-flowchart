@@ -57,12 +57,12 @@ export const VdFlowchart = defineComponent({
       create();
     });
 
-    // Data flows through load(); construct-time options recreate the editor.
+    // External replacements are silent; feeding change.document back is safe.
     watch(
       () => props.data,
       (next) => {
         if (instance && typeof instance.load === 'function') {
-          instance.load(next, { preserveSelection: props.preserveSelection });
+          instance.load(next, { preserveSelection: props.preserveSelection, silent: true });
         }
       },
       { deep: true },
@@ -71,8 +71,13 @@ export const VdFlowchart = defineComponent({
       () => [props.readonly, props.gridSize, props.autoFit, props.history, props.historyLimit],
       () => {
         if (!instance) return;
-        instance.destroy();
-        create();
+        instance.updateOptions({
+          readonly: props.readonly,
+          gridSize: props.gridSize,
+          autoFit: props.autoFit,
+          history: props.history,
+          historyLimit: props.historyLimit,
+        });
       },
     );
 

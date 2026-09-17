@@ -6,8 +6,9 @@ Vanduo **flowchart** for Vue 3: a node/edge editor with undo/redo, layout
 modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
-**Status: 1.2.0.** `VD_FLOWCHART_VERSION` matches the package version and is
-**load-bearing** — `toJSON()` writes it into user documents. Do not reset it.
+**Status: 1.3.0.** `VD_FLOWCHART_VERSION` tracks the package release.
+`FLOWCHART_DOCUMENT_VERSION` (currently `1.2.0`) is the value `toJSON()`
+writes. Do not reset either independently without a compatibility plan.
 
 ## Install
 
@@ -30,6 +31,7 @@ import {
   LAYOUT_MODES,
   FLOWCHART_NODE_TYPES,
   VD_FLOWCHART_VERSION,
+  FLOWCHART_DOCUMENT_VERSION,
 } from '@vanduo-oss/vd3-flowchart';
 import '@vanduo-oss/vd3-flowchart/css';
 ```
@@ -47,10 +49,14 @@ if anything but `vue` is externalized. The package declares
 
 ## Version policy
 
-`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.2.0`). Bump both
-together, and only when the serialized document format changes. This continues
-the old-line `@vanduo-oss/flowchart` lineage (never reset to `1.0.0`). Do not
-reuse the retired npm name `@vanduo-oss/flowchart`.
+`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.3.0`). Bump those
+together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
+unless the serialized schema changes; add fixtures and explicit compatibility
+rules for a format change. Unversioned 1.x documents through 1.2.0 still load.
+Malformed JSON and unsupported future versions throw before the active
+document, selection, or history change. This continues the old-line
+`@vanduo-oss/flowchart` lineage (never reset to `1.0.0`). Do not reuse the
+retired npm name `@vanduo-oss/flowchart`.
 
 ## Theming
 
@@ -60,9 +66,12 @@ package dependency; any provider of the tokens works.
 
 ```js
 import '@vanduo-oss/vd3/css';
-// …or the tokens-only layer:
+// Same component styles without bundled icon fonts:
 import '@vanduo-oss/vd3/css/core';
 ```
+
+`@vanduo-oss/vd3/css/core` is **not** tokens-only. Token JSON is
+`@vanduo-oss/vd3/tokens.json`.
 
 Tokens consumed include `--vd-bg-primary`, `--vd-bg-secondary`,
 `--vd-text-primary`, `--vd-text-muted`, `--vd-border-color`, and
@@ -83,8 +92,23 @@ Tokens consumed include `--vd-bg-primary`, `--vd-bg-secondary`,
 
 | Export | Contents |
 | --- | --- |
-| `@vanduo-oss/vd3-flowchart` | `VdFlowchart` + `VdFlowchartCore`, layout, `FLOWCHART_*`, `VD_FLOWCHART_VERSION` |
+| `@vanduo-oss/vd3-flowchart` | `VdFlowchart` + `VdFlowchartCore`, layout, `FLOWCHART_*`, `VD_FLOWCHART_VERSION`, `FLOWCHART_DOCUMENT_VERSION` |
 | `@vanduo-oss/vd3-flowchart/css` | Stylesheet (`dist/vd3-flowchart.css`) |
+
+## Tested interaction envelope
+
+Observed on a Mac mini (Apple M4, 10 cores, 24 GB, macOS 26.6.2) with
+Chromium 153 at 1440×1000, no CPU throttling. Two warmups and ten samples per
+synchronous operation; drag used 24 pointer steps. Times include forced layout
+and exclude compositor paint. These are observations, not supported-size
+guarantees.
+
+- Graph label edit: 25 / 100 / 250 / 500 nodes → 2.9 / 11.2 / 29.9 / 57 ms.
+- Graph undo + redo: 3.6 / 14 / 34.5 / 69.8 ms.
+- Graph tree/grid layout: 2.9 / 11.1 / 28.4 / 58.9 ms.
+- Graph drag (translate the moved node SVG and rebuild only incident edges): 0.2 / 0.3 / 0.2 / 0.3 ms, down from 1.6 / 4.5 / 10.7 / 20.7 ms before that path.
+
+Raw JSON: `vd3-docs/reviews/2026-09-16/performance-results.json`.
 
 ## Development
 
