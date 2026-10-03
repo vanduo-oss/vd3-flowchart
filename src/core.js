@@ -2043,7 +2043,7 @@ export class VdFlowchart {
     clearChildren(this.minimapSvg);
     nodes.forEach((node) => {
       const point = map(node.x, node.y);
-      const selected = this.selection?.kind === 'node' && this.selection.id === node.id;
+      const selected = this.isNodeSelected(node.id);
       this.minimapSvg.appendChild(
         svgEl('rect', {
           class: `vd-flowchart-minimap-node${selected ? ' is-selected' : ''}`,
@@ -2268,7 +2268,15 @@ export class VdFlowchart {
     }
   }
 
+  // Keys the editor consumes stop here, so page-level shortcuts (a docs
+  // site's "/" search, a host's Escape handler) do not also fire.
   handleKeyDown(event) {
+    const alreadyHandled = event.defaultPrevented;
+    this.handleEditorKey(event);
+    if (!alreadyHandled && event.defaultPrevented) event.stopPropagation();
+  }
+
+  handleEditorKey(event) {
     const target = event.target;
     if (
       target &&

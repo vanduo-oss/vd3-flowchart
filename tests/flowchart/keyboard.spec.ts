@@ -320,6 +320,23 @@ describe('mind-map keyboard model', () => {
     expect(instance.shortcutsHelp.textContent).not.toContain('Add a child node');
   });
 
+  it('keeps consumed keys from reaching page shortcuts but lets others through', () => {
+    const { instance, canvas } = editor(tree);
+    const seen: string[] = [];
+    const onWindowKey = (event: KeyboardEvent) => seen.push(event.key);
+    window.addEventListener('keydown', onWindowKey);
+    try {
+      instance.selectNode('kid');
+      press(canvas, '/', { metaKey: true });
+      press(canvas, 'Escape');
+      press(canvas, 'Tab', { shiftKey: true });
+      press(canvas, 'Escape');
+    } finally {
+      window.removeEventListener('keydown', onWindowKey);
+    }
+    expect(seen).toEqual(['Tab', 'Escape']);
+  });
+
   it('switches keyboard models in place', () => {
     const { instance, canvas } = editor(tree, { keyboardShortcuts: 'basic' });
     instance.updateOptions({ keyboardShortcuts: 'mindmap' });
