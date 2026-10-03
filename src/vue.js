@@ -23,6 +23,7 @@ const EDITOR_OPTION_KEYS = [
   'keyboardShortcuts',
   'snapGuides',
   'minimap',
+  'autoLayout',
 ];
 
 export const VdFlowchart = defineComponent({
@@ -48,6 +49,8 @@ export const VdFlowchart = defineComponent({
     snapGuides: { type: Boolean, default: true },
     /** Show the overview minimap in the canvas corner (default true). */
     minimap: { type: Boolean, default: true },
+    /** Re-run the current layout after keyboard or handle insertions (default false). */
+    autoLayout: { type: Boolean, default: false },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
   setup(props, { emit, expose }) {

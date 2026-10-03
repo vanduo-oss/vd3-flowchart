@@ -39,6 +39,8 @@ export interface VdFlowchartProps {
   snapGuides?: boolean;
   /** Show the overview minimap (default true). */
   minimap?: boolean;
+  /** Re-run the current layout after keyboard or handle insertions (default false). */
+  autoLayout?: boolean;
 }
 
 export interface VdFlowchartEmits {

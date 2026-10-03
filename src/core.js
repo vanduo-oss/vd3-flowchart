@@ -1426,6 +1426,7 @@ export class VdFlowchart {
     this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
     this.snapGuides = options.snapGuides !== false;
     this.minimapEnabled = options.minimap !== false;
+    this.autoLayout = Boolean(options.autoLayout);
     this.minimapFrame = 0;
     this.minimapDrag = null;
     this.shortcutsHelpOpen = false;
@@ -5002,6 +5003,8 @@ export class VdFlowchart {
         to: { nodeId: node.id, port: DIRECTION_PORTS[oppositeDirection(direction)] },
         ...edgeStyle,
       });
+      if (edge && anchor) this.placeEdgeBySibling(edge.id, parent.id, anchor.id, options.before);
+      if (this.autoLayout && this.layoutMode !== 'grid') this.layout(this.layoutMode);
       this.select({ kind: 'node', id: node.id });
       return { node, edge };
     });
@@ -5009,6 +5012,20 @@ export class VdFlowchart {
     this.revealNode(result.node.id);
     if (options.edit) this.startTextEdit(result.node.id, { inserted: true });
     return result;
+  }
+
+  // Tree and radial layouts order children by connection order, so a sibling's
+  // connection goes right after (or before) its anchor's instead of last.
+  placeEdgeBySibling(edgeId, parentId, anchorId, before = false) {
+    const edges = this.documentData.edges;
+    const fromIndex = edges.findIndex((edge) => edge.id === edgeId);
+    if (fromIndex === -1) return;
+    const [moved] = edges.splice(fromIndex, 1);
+    const anchorIndex = edges.findIndex(
+      (edge) => edge.from.nodeId === parentId && edge.to.nodeId === anchorId,
+    );
+    if (anchorIndex === -1) edges.push(moved);
+    else edges.splice(before ? anchorIndex : anchorIndex + 1, 0, moved);
   }
 
   // Insert a sibling after (or before) `nodeId`; a node without a parent gets a
@@ -5452,6 +5469,7 @@ export class VdFlowchart {
     }
     if ('snapGuides' in options) this.snapGuides = options.snapGuides !== false;
     if ('minimap' in options) this.setMinimapEnabled(options.minimap !== false);
+    if ('autoLayout' in options) this.autoLayout = Boolean(options.autoLayout);
     this.syncCanvasLabel();
     if (this.shortcutsHelpOpen) this.renderShortcutsHelp();
     if ('history' in options && (options.history !== false) !== this.historyEnabled) {

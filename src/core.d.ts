@@ -235,6 +235,8 @@ export interface VdFlowchartOptions {
   snapGuides?: boolean;
   /** Show the overview minimap; it hides on canvases narrower than 480px (default true). */
   minimap?: boolean;
+  /** Re-run the current tree or radial layout after insertions, in the same undo step (default false). */
+  autoLayout?: boolean;
 }
 
 export class VdFlowchart {
@@ -361,6 +363,7 @@ export class VdFlowchart {
       | 'keyboardShortcuts'
       | 'snapGuides'
       | 'minimap'
+      | 'autoLayout'
     >,
   ): this;
   destroy(): void;
