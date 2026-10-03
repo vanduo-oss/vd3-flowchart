@@ -143,7 +143,10 @@ const ARROW_DIRECTIONS = {
 };
 
 function getShortcutRows(mode, readonly) {
-  const navigation = [['Arrow keys', 'Select the nearest node in that direction']];
+  const navigation = [
+    ['Arrow keys', 'Select the nearest node in that direction'],
+    ['Shift + Arrow', 'Select a connection on that side (repeat to cycle)'],
+  ];
   const view = [
     ['Cmd/Ctrl + = or -', 'Zoom in or out'],
     ['Cmd/Ctrl + 0', 'Zoom to 100%'],
@@ -169,6 +172,10 @@ function getShortcutRows(mode, readonly) {
   return [
     ...navigation,
     ...mindmap,
+    [
+      mode === 'mindmap' ? 'Enter, F2, or type on a connection' : 'Enter or F2 on a connection',
+      'Edit the connection label',
+    ],
     ['Alt + Arrow', 'Nudge the node (add Shift for 1 px)'],
     ['Delete or Backspace', 'Delete the selection'],
     ['Cmd/Ctrl + D', 'Duplicate the node'],
@@ -1275,6 +1282,7 @@ export class VdFlowchart {
     this.destroyed = false;
     this.lastNodePointer = null;
     this.reconnectEdgeId = null;
+    this.edgeCycleAnchor = null;
     this.clipboard = null;
     this.gridPatternId = nextId('flowchart-grid');
     this.markerIds = new Map();
@@ -2071,6 +2079,7 @@ export class VdFlowchart {
     const modKey = event.metaKey || event.ctrlKey;
     const mindmap = this.keyboardShortcuts === 'mindmap';
     const selectedNode = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
+    const selectedEdge = this.selection?.kind === 'edge' ? this.findEdge(this.selection.id) : null;
     const editable = !this.readonly && Boolean(selectedNode);
 
     if (key === '?' && !modKey && !event.altKey) {
@@ -2096,7 +2105,10 @@ export class VdFlowchart {
         }
         return true;
       }
-      if (event.shiftKey) return false;
+      if (event.shiftKey) {
+        const anchorId = selectedNode?.id ?? (selectedEdge ? this.edgeCycleAnchor : null);
+        return anchorId ? this.selectSideEdge(anchorId, direction) : false;
+      }
       this.navigateSelection(direction);
       return true;
     }
@@ -2105,6 +2117,16 @@ export class VdFlowchart {
     if ((key === 'Home' || key === 'End') && nodes.length) {
       this.selectNode(nodes[key === 'Home' ? 0 : nodes.length - 1].id);
       return true;
+    }
+
+    if (selectedEdge && !this.readonly && !event.altKey) {
+      if (key === 'F2' || key === 'Enter' || (key === ' ' && mindmap)) {
+        return this.startEdgeLabelEdit(selectedEdge.id);
+      }
+      if (mindmap && key.length === 1 && key !== ' ') {
+        return this.startEdgeLabelEdit(selectedEdge.id, { initialText: key });
+      }
+      return false;
     }
 
     if (!editable || event.altKey) return false;
@@ -2136,12 +2158,54 @@ export class VdFlowchart {
     const nodes = this.documentData.nodes;
     if (!nodes.length) return false;
     const current = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
+    const edge = this.selection?.kind === 'edge' ? this.findEdge(this.selection.id) : null;
     const next = current
       ? findSpatialNeighbor(nodes, current, direction)
-      : findNearestNode(nodes, this.getViewportCenter());
+      : edge
+        ? this.getEdgeEndInDirection(edge, direction)
+        : findNearestNode(nodes, this.getViewportCenter());
     if (!next) return false;
     this.selectNode(next.id);
     this.revealNode(next.id);
+    return true;
+  }
+
+  // The end of `edge` that best matches `direction`, measured from the label
+  // anchor so either end can be reached from a selected connection.
+  getEdgeEndInDirection(edge, direction) {
+    const fromNode = this.findNode(edge.from.nodeId);
+    const toNode = this.findNode(edge.to.nodeId);
+    if (!fromNode || !toNode) return fromNode || toNode;
+    const { labelX, labelY } = buildEdgePath(edge, fromNode, toNode);
+    const vector = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] }[direction];
+    const score = (node) =>
+      (node.x + node.width / 2 - labelX) * vector[0] +
+      (node.y + node.height / 2 - labelY) * vector[1];
+    return score(toNode) >= score(fromNode) ? toNode : fromNode;
+  }
+
+  // Connections attached to `nodeId` on the `direction` side, outgoing or
+  // incoming, in document order.
+  getSideEdges(nodeId, direction) {
+    const port = DIRECTION_PORTS[direction];
+    return this.documentData.edges.filter(
+      (edge) =>
+        (edge.from.nodeId === nodeId && edge.from.port === port) ||
+        (edge.to.nodeId === nodeId && edge.to.port === port),
+    );
+  }
+
+  // Select a connection on one side of a node; repeating cycles through them.
+  selectSideEdge(nodeId, direction) {
+    const edges = this.getSideEdges(nodeId, direction);
+    if (!edges.length) return false;
+    const currentIndex =
+      this.selection?.kind === 'edge'
+        ? edges.findIndex((edge) => edge.id === this.selection.id)
+        : -1;
+    const next = edges[(currentIndex + 1) % edges.length];
+    this.select({ kind: 'edge', id: next.id });
+    this.edgeCycleAnchor = nodeId;
     return true;
   }
 
@@ -2241,9 +2305,7 @@ export class VdFlowchart {
     const edgeTarget = event.target.closest('[data-edge-id]');
     if (edgeTarget && !event.target.closest('[data-edge-endpoint]')) {
       const edgeId = edgeTarget.getAttribute('data-edge-id');
-      if (edgeId && this.findEdge(edgeId)) {
-        this.reconnectEdgeId = edgeId;
-        this.select({ kind: 'edge', id: edgeId });
+      if (edgeId && this.startEdgeLabelEdit(edgeId)) {
         event.preventDefault();
         event.stopPropagation();
         return;
@@ -2954,6 +3016,54 @@ export class VdFlowchart {
     return true;
   }
 
+  // Inline label editor for a connection, placed on the label anchor
+  // (curve midpoint). Labels render on one line, so Enter always saves.
+  startEdgeLabelEdit(edgeId, options = {}) {
+    if (this.readonly) return false;
+    const edge = this.findEdge(sanitizeId(edgeId));
+    if (!edge) return false;
+    this.stopTextEdit({ commit: true });
+    this.select({ kind: 'edge', id: edge.id });
+
+    const replacing = typeof options.initialText === 'string';
+    const textarea = createElement('textarea', {
+      className: 'vd-flowchart-text-editor vd-flowchart-text-editor--edge',
+      value: replacing ? options.initialText : edge.label,
+      rows: 1,
+    });
+    textarea.setAttribute('data-edge-id', edge.id);
+    textarea.setAttribute('aria-label', 'Edit connection label');
+    textarea.spellcheck = false;
+    textarea.addEventListener('input', () => this.positionTextEditor());
+    textarea.addEventListener('pointerdown', (event) => event.stopPropagation());
+    textarea.addEventListener('dblclick', (event) => event.stopPropagation());
+    textarea.addEventListener('keydown', (event) => {
+      if (event.isComposing) return;
+      if (event.key === 'Escape' || event.key === 'Enter') {
+        event.preventDefault();
+        this.stopTextEdit({ commit: event.key === 'Enter' });
+        this.canvasEl.focus();
+      }
+    });
+    textarea.addEventListener('blur', () => {
+      if (this.textEditor?.textarea === textarea) this.stopTextEdit({ commit: true });
+    });
+
+    this.textEditor = { nodeId: null, edgeId: edge.id, previousText: edge.label, textarea };
+    this.canvasEl.appendChild(textarea);
+    this.render({ inspector: true, json: false });
+
+    const focusEditor = () => {
+      if (this.textEditor?.textarea !== textarea) return;
+      textarea.focus();
+      if (replacing) textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      else textarea.select();
+    };
+    focusEditor();
+    window.requestAnimationFrame(focusEditor);
+    return true;
+  }
+
   handleTextEditorKeyDown(event, node) {
     if (event.isComposing) return;
     const mindmap = this.keyboardShortcuts === 'mindmap';
@@ -2988,6 +3098,16 @@ export class VdFlowchart {
     this.textEditor = null;
     editor.textarea.remove();
 
+    if (editor.edgeId) {
+      const label = nextText.replace(/\s*\n\s*/g, ' ').trim();
+      if (commit && !this.readonly && label !== editor.previousText) {
+        this.updateEdge(editor.edgeId, { label }, { inspector: true, reason: 'edge:update' });
+      } else {
+        this.render({ scene: true, inspector: false, json: false });
+      }
+      return true;
+    }
+
     if (commit && !this.readonly && nextText !== editor.previousText) {
       this.coalesceInsertedText = editor.inserted;
       try {
@@ -3008,6 +3128,10 @@ export class VdFlowchart {
 
   positionTextEditor() {
     if (!this.textEditor) return;
+    if (this.textEditor.edgeId) {
+      this.positionEdgeLabelEditor();
+      return;
+    }
     const node = this.findNode(this.textEditor.nodeId);
     if (!node) {
       this.stopTextEdit({ commit: false });
@@ -3033,6 +3157,29 @@ export class VdFlowchart {
     textarea.style.fontSize = `${formatNumber(metrics.fontSize * scale)}px`;
     textarea.style.lineHeight = `${formatNumber(lineHeight)}px`;
     textarea.style.padding = `${formatNumber(verticalPadding)}px ${formatNumber(horizontalPadding)}px`;
+  }
+
+  positionEdgeLabelEditor() {
+    const edge = this.findEdge(this.textEditor.edgeId);
+    const fromNode = edge && this.findNode(edge.from.nodeId);
+    const toNode = edge && this.findNode(edge.to.nodeId);
+    if (!edge || !fromNode || !toNode) {
+      this.stopTextEdit({ commit: false });
+      return;
+    }
+    const { labelX, labelY } = buildEdgePath(edge, fromNode, toNode);
+    const viewport = this.documentData.viewport;
+    const textarea = this.textEditor.textarea;
+    const fontSize = Math.max(11, 13 * viewport.scale);
+    const width = clamp(textarea.value.length * fontSize * 0.62 + 28, 96, 280);
+    const height = fontSize * 1.4 + 12;
+    textarea.style.left = `${formatNumber(viewport.x + labelX * viewport.scale - width / 2)}px`;
+    textarea.style.top = `${formatNumber(viewport.y + (labelY - 8) * viewport.scale - height / 2)}px`;
+    textarea.style.width = `${formatNumber(width)}px`;
+    textarea.style.height = `${formatNumber(height)}px`;
+    textarea.style.fontSize = `${formatNumber(fontSize)}px`;
+    textarea.style.lineHeight = `${formatNumber(fontSize * 1.4)}px`;
+    textarea.style.padding = '6px 10px';
   }
 
   render(options = {}) {
@@ -3185,7 +3332,7 @@ export class VdFlowchart {
     group.appendChild(visiblePath);
     group.appendChild(hitPath);
 
-    if (edge.label) {
+    if (edge.label && this.textEditor?.edgeId !== edge.id) {
       const label = svgEl('text', {
         class: 'vd-flowchart-edge-label',
         x: edgePath.labelX,
@@ -3707,6 +3854,7 @@ export class VdFlowchart {
 
     this.selection = next;
     if (previousKey !== nextKey) {
+      this.edgeCycleAnchor = null;
       this.render({ scene: true, inspector: true, json: false });
       this.emit('select', { selection: this.getSelectionSnapshot() });
       return;

@@ -691,6 +691,11 @@
   text-align: left;
 }
 
+.vd-flowchart-text-editor--edge {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .vd-flowchart-text-editor--label {
   border-color: transparent;
   background: color-mix(in srgb, var(--vd-flowchart-panel) 82%, transparent);

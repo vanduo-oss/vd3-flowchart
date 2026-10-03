@@ -316,6 +316,10 @@ export class VdFlowchart {
 
   // Text editing
   startTextEdit(nodeId: string, options?: StartTextEditOptions): boolean;
+  /** Open the inline label editor on a connection. */
+  startEdgeLabelEdit(edgeId: string, options?: StartTextEditOptions): boolean;
+  /** Select a connection on one side of a node; repeated calls cycle. */
+  selectSideEdge(nodeId: string, direction: FlowchartDirection): boolean;
   stopTextEdit(options?: { commit?: boolean }): void;
 
   // Lifecycle

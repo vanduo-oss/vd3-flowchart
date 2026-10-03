@@ -123,6 +123,19 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     expect(doc.edges).toHaveLength(2);
   });
 
+  test('labels a connection from the keyboard', async ({ page }) => {
+    await page
+      .locator('#flowchart g.vd-flowchart-node')
+      .first()
+      .locator('.vd-flowchart-node-shape')
+      .click();
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.type('yes');
+    await expect(page.locator('#flowchart .vd-flowchart-text-editor--edge')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#flowchart .vd-flowchart-edge-label')).toHaveText('yes');
+  });
+
   test.afterEach(() => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
