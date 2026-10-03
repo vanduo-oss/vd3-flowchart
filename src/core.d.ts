@@ -225,6 +225,8 @@ export interface VdFlowchartOptions {
   historyLimit?: number;
   /** Keyboard model on the focused canvas (default `'mindmap'`). */
   keyboardShortcuts?: FlowchartKeyboardShortcuts;
+  /** Snap dragged nodes to other nodes' edges and centres; Alt bypasses (default true). */
+  snapGuides?: boolean;
 }
 
 export class VdFlowchart {
@@ -327,7 +329,13 @@ export class VdFlowchart {
   updateOptions(
     options: Pick<
       VdFlowchartOptions,
-      'readonly' | 'gridSize' | 'autoFit' | 'history' | 'historyLimit' | 'keyboardShortcuts'
+      | 'readonly'
+      | 'gridSize'
+      | 'autoFit'
+      | 'history'
+      | 'historyLimit'
+      | 'keyboardShortcuts'
+      | 'snapGuides'
     >,
   ): this;
   destroy(): void;

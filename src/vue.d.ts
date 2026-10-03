@@ -35,6 +35,8 @@ export interface VdFlowchartProps {
   historyLimit?: number;
   /** Keyboard model on the focused canvas (default `'mindmap'`). */
   keyboardShortcuts?: FlowchartKeyboardShortcuts;
+  /** Snap dragged nodes to alignment guides; Alt bypasses (default true). */
+  snapGuides?: boolean;
 }
 
 export interface VdFlowchartEmits {

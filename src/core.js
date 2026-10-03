@@ -97,6 +97,8 @@ const CONNECTION_PORT_HIT_RADIUS = 14;
 const PORT_CLICK_SLOP = 4;
 const RESIZE_HANDLE_SIZE = 9;
 const SELECTION_OUTSET = 4;
+const GUIDE_SNAP_DISTANCE = 6;
+const GUIDE_OVERHANG = 12;
 // Shapes whose outline does not reach the corners of their bounds get a dashed
 // selection box so the corner resize handles have something to sit on.
 const SELECTION_BOX_TYPES = new Set(['circle', 'diamond', 'label']);
@@ -1107,6 +1109,79 @@ function getResizeCursor(handle) {
   return 'nwse-resize';
 }
 
+// Alignment lines of `nodes`: left/centre/right on x and top/middle/bottom on
+// y, each with the node's extent on the other axis, sorted by value.
+function collectGuideLines(nodes) {
+  const x = [];
+  const y = [];
+  nodes.forEach((node) => {
+    const right = node.x + node.width;
+    const bottom = node.y + node.height;
+    [node.x, node.x + node.width / 2, right].forEach((value) =>
+      x.push({ value, start: node.y, end: bottom }),
+    );
+    [node.y, node.y + node.height / 2, bottom].forEach((value) =>
+      y.push({ value, start: node.x, end: right }),
+    );
+  });
+  const byValue = (a, b) => a.value - b.value;
+  return { x: x.sort(byValue), y: y.sort(byValue) };
+}
+
+function lowerBound(lines, value) {
+  let low = 0;
+  let high = lines.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (lines[middle].value < value) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+// Smallest offset that puts one of `candidates` on a guide line within
+// `threshold`, plus every line at the snapped position.
+function snapToGuides(lines, candidates, threshold) {
+  let best = null;
+  candidates.forEach((candidate) => {
+    const index = lowerBound(lines, candidate);
+    [lines[index - 1], lines[index]].forEach((line) => {
+      if (!line) return;
+      const offset = line.value - candidate;
+      if (Math.abs(offset) <= threshold && (!best || Math.abs(offset) < Math.abs(best.offset))) {
+        best = { offset };
+      }
+    });
+  });
+  if (!best) return null;
+  const positions = candidates.map((candidate) => candidate + best.offset);
+  best.lines = lines.filter((line) =>
+    positions.some((position) => Math.abs(line.value - position) < 0.5),
+  );
+  return best;
+}
+
+// Guide segments spanning the snapped box and every node sharing the line.
+function guideSegments(axis, lines, box) {
+  const byValue = new Map();
+  lines.forEach((line) => {
+    const current = byValue.get(line.value);
+    byValue.set(line.value, {
+      start: Math.min(current?.start ?? Infinity, line.start),
+      end: Math.max(current?.end ?? -Infinity, line.end),
+    });
+  });
+  const boxStart = axis === 'x' ? box.top : box.left;
+  const boxEnd = boxStart + (axis === 'x' ? box.height : box.width);
+  return [...byValue].map(([value, extent]) => {
+    const start = Math.min(extent.start, boxStart) - GUIDE_OVERHANG;
+    const end = Math.max(extent.end, boxEnd) + GUIDE_OVERHANG;
+    return axis === 'x'
+      ? { x1: value, y1: start, x2: value, y2: end }
+      : { x1: start, y1: value, x2: end, y2: value };
+  });
+}
+
 function getBounds(nodes) {
   if (!nodes.length) {
     return { left: 0, top: 0, right: 0, bottom: 0 };
@@ -1297,6 +1372,7 @@ export class VdFlowchart {
     this.historyBatchDirty = false;
     this.coalesceInsertedText = false;
     this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
+    this.snapGuides = options.snapGuides !== false;
     this.shortcutsHelpOpen = false;
     this.autoFit = Boolean(options.autoFit);
     this.readyEmitted = false;
@@ -1527,12 +1603,14 @@ export class VdFlowchart {
     this.previewLayer = svgEl('g', { class: 'vd-flowchart-preview' });
     this.nodesLayer = svgEl('g', { class: 'vd-flowchart-nodes' });
     this.overlayLayer = svgEl('g', { class: 'vd-flowchart-overlay' });
+    this.guidesLayer = svgEl('g', { class: 'vd-flowchart-guides' });
 
     this.world.appendChild(this.gridRect);
     this.world.appendChild(this.edgesLayer);
     this.world.appendChild(this.previewLayer);
     this.world.appendChild(this.nodesLayer);
     this.world.appendChild(this.overlayLayer);
+    this.world.appendChild(this.guidesLayer);
     this.svg.appendChild(this.world);
     this.canvasEl.appendChild(this.svg);
 
@@ -2474,16 +2552,7 @@ export class VdFlowchart {
       this.select({ kind: 'node', id: nodeId });
 
       if (!this.readonly) {
-        const node = this.findNode(nodeId);
-        const world = this.clientToWorld(event.clientX, event.clientY);
-        this.interaction = {
-          kind: 'drag-node',
-          pointerId: event.pointerId,
-          nodeId,
-          offsetX: world.x - node.x,
-          offsetY: world.y - node.y,
-          moved: false,
-        };
+        this.interaction = this.createDragInteraction(event, nodeId, [nodeId]);
         this.capturePointer(event.pointerId);
       }
 
@@ -2505,21 +2574,97 @@ export class VdFlowchart {
     event.preventDefault();
   }
 
+  createDragInteraction(event, nodeId, nodeIds) {
+    const nodes = nodeIds.map((id) => this.findNode(id)).filter(Boolean);
+    const moving = new Set(nodes.map((node) => node.id));
+    return {
+      kind: 'drag-node',
+      pointerId: event.pointerId,
+      nodeId,
+      nodeIds: nodes.map((node) => node.id),
+      startWorld: this.clientToWorld(event.clientX, event.clientY),
+      origins: new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }])),
+      bounds: getBounds(nodes),
+      guideLines: this.snapGuides
+        ? collectGuideLines(this.getVisibleNodes().filter((node) => !moving.has(node.id)))
+        : null,
+      snapDisabled: false,
+      moved: false,
+    };
+  }
+
+  // Translate every dragged node by the pointer delta, snapping the group's
+  // bounds to the nearest alignment guide on each axis. Alt turns snapping
+  // off for the rest of the gesture.
+  moveDraggedNodes(event) {
+    const interaction = this.interaction;
+    const world = this.clientToWorld(event.clientX, event.clientY);
+    let dx = world.x - interaction.startWorld.x;
+    let dy = world.y - interaction.startWorld.y;
+    if (event.altKey) interaction.snapDisabled = true;
+
+    let guides = [];
+    if (interaction.guideLines && !interaction.snapDisabled) {
+      const box = interaction.bounds;
+      const threshold = GUIDE_SNAP_DISTANCE / this.documentData.viewport.scale;
+      const left = box.left + dx;
+      const top = box.top + dy;
+      const width = box.right - box.left;
+      const height = box.bottom - box.top;
+      const snapX = snapToGuides(
+        interaction.guideLines.x,
+        [left, left + width / 2, left + width],
+        threshold,
+      );
+      const snapY = snapToGuides(
+        interaction.guideLines.y,
+        [top, top + height / 2, top + height],
+        threshold,
+      );
+      if (snapX) dx += snapX.offset;
+      if (snapY) dy += snapY.offset;
+      const snapped = { left: box.left + dx, top: box.top + dy, width, height };
+      if (snapX) guides = guides.concat(guideSegments('x', snapX.lines, snapped));
+      if (snapY) guides = guides.concat(guideSegments('y', snapY.lines, snapped));
+    }
+
+    let changed = false;
+    interaction.nodeIds.forEach((id) => {
+      const node = this.findNode(id);
+      const origin = interaction.origins.get(id);
+      if (!node || !origin) return;
+      const nextX = formatNumber(origin.x + dx);
+      const nextY = formatNumber(origin.y + dy);
+      if (nextX === node.x && nextY === node.y) return;
+      node.x = nextX;
+      node.y = nextY;
+      changed = true;
+      this.renderDraggedNode(node);
+    });
+    if (changed) interaction.moved = true;
+    this.renderGuides(guides);
+  }
+
+  renderGuides(guides) {
+    clearChildren(this.guidesLayer);
+    guides.forEach((guide) => {
+      this.guidesLayer.appendChild(
+        svgEl('line', {
+          class: 'vd-flowchart-guide',
+          x1: guide.x1,
+          y1: guide.y1,
+          x2: guide.x2,
+          y2: guide.y2,
+        }),
+      );
+    });
+  }
+
   handlePointerMove(event) {
     if (!this.interaction || this.interaction.pointerId !== event.pointerId) return;
 
     if (this.interaction.kind === 'drag-node') {
-      const node = this.findNode(this.interaction.nodeId);
-      if (!node) return;
-      const world = this.clientToWorld(event.clientX, event.clientY);
-      const nextX = formatNumber(world.x - this.interaction.offsetX);
-      const nextY = formatNumber(world.y - this.interaction.offsetY);
-      if (nextX !== node.x || nextY !== node.y) {
-        node.x = nextX;
-        node.y = nextY;
-        this.interaction.moved = true;
-        this.renderDraggedNode(node);
-      }
+      this.moveDraggedNodes(event);
       return;
     }
 
@@ -2672,6 +2817,7 @@ export class VdFlowchart {
     }
 
     if (interaction.kind === 'drag-node') {
+      clearChildren(this.guidesLayer);
       if (interaction.moved) {
         this.render({ inspector: true, json: true });
         this.emitChange('node:move', { node: deepClone(this.findNode(interaction.nodeId)) });
@@ -3891,6 +4037,10 @@ export class VdFlowchart {
     return this.documentData.nodes.find((node) => node.id === nodeId) || null;
   }
 
+  getVisibleNodes() {
+    return this.documentData.nodes;
+  }
+
   findEdge(edgeId) {
     return this.documentData.edges.find((edge) => edge.id === edgeId) || null;
   }
@@ -4678,6 +4828,7 @@ export class VdFlowchart {
     if ('keyboardShortcuts' in options) {
       this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
     }
+    if ('snapGuides' in options) this.snapGuides = options.snapGuides !== false;
     this.syncCanvasLabel();
     if (this.shortcutsHelpOpen) this.renderShortcutsHelp();
     if ('history' in options && (options.history !== false) !== this.historyEnabled) {

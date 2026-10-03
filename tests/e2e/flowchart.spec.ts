@@ -136,6 +136,19 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     await expect(page.locator('#flowchart .vd-flowchart-edge-label')).toHaveText('yes');
   });
 
+  test('a near-aligned drag snaps to the other node and shows a guide', async ({ page }) => {
+    const target = page.locator('#flowchart g.vd-flowchart-node').nth(1);
+    const box = (await target.locator('.vd-flowchart-node-shape').boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 4, { steps: 4 });
+    await expect(page.locator('#flowchart .vd-flowchart-guide')).not.toHaveCount(0);
+    await page.mouse.up();
+    await expect(page.locator('#flowchart .vd-flowchart-guide')).toHaveCount(0);
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect((doc.nodes as Array<{ y: number }>)[1].y).toBe(80);
+  });
+
   test.afterEach(() => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
