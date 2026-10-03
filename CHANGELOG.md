@@ -17,6 +17,12 @@ All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 - Connection handles sit outside each side, appear on hover as well as on
   selection, and no longer shift on hover (the scale transform used the node
   origin).
+- **Document format 1.3.0:** nodes may carry `collapsed: true` (written only
+  on collapsed nodes). Every 1.x document through 1.3.0 still loads; packages
+  older than 1.4.0 reject 1.3.0 files as a future version.
+- Double-clicking a connection edits its label instead of entering reconnect
+  mode (a single click already shows the reconnect endpoints).
+- The `select` event payload adds `nodeIds`; `selection` keeps its shape.
 
 ### Added
 
@@ -32,6 +38,24 @@ All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
   `nudgeNode()`, `duplicateSelection()`, `zoomTo()`, `revealNode()`, and
   `toggleShortcutsHelp()`; `startTextEdit()` accepts `{ initialText }`.
 - Dashed selection frame for circle, diamond, and label nodes.
+- Multi-select: Shift+click toggles, Shift+drag on empty canvas draws a
+  marquee, Cmd/Ctrl+A selects all. Groups drag, nudge, copy, cut, paste,
+  duplicate (with internal connections), and delete as one undo step each.
+  `selectNodes()`, `toggleNodeSelection()`, `getSelectedNodeIds()`,
+  `isNodeSelected()`, `nudgeNodes()`.
+- Collapsible branches with a "+N" badge, a "−" toggle on a selected parent,
+  and Cmd/Ctrl+/; hidden nodes are skipped by navigation, fit, minimap,
+  guides, connection targets, and selection. `setCollapsed()`,
+  `toggleCollapsed()`, `getVisibleNodes()`, `isNodeHidden()`.
+- Connection labels from the keyboard: Shift+Arrow selects a node's connection
+  on that side (repeat to cycle); Enter, F2, or typing edits inline; arrows
+  move to the end nodes. `startEdgeLabelEdit()`, `selectSideEdge()`.
+- Alignment guides while dragging, with Alt to bypass; `snapGuides` option.
+- Minimap with click/drag panning, a toolbar toggle, and the `minimap` option;
+  it hides on canvases narrower than 480px. `setMinimapEnabled()`,
+  `centerViewOn()`.
+- `autoLayout` option: re-run the current tree or radial layout after
+  keyboard or handle insertions, in the same undo step.
 
 ### Fixed
 
@@ -40,8 +64,9 @@ All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
   edges copy the sibling's or parent's edge style.
 - Deleting a node from the keyboard selects its parent.
 - The palette "Shapes" title no longer wraps mid-word in narrow columns.
-
-The saved document format stays `1.2.0`.
+- Inserted sibling connections keep sibling order for tree and radial layouts.
+- The label editor no longer re-selects text that the user has already
+  started typing.
 
 ## 1.3.0 — 2026-09-17
 

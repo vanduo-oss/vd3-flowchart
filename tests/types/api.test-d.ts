@@ -51,6 +51,16 @@ editor.updateOptions({ keyboardShortcuts: 'basic' });
 const shortcutModes: readonly FlowchartKeyboardShortcuts[] = FLOWCHART_KEYBOARD_SHORTCUTS;
 // @ts-expect-error — only 'mindmap' and 'basic' are keyboard models.
 editor.updateOptions({ keyboardShortcuts: 'vim' });
+editor.updateOptions({ snapGuides: false, minimap: false, autoLayout: true });
+editor.selectNodes(['a', 'b'], { primary: 'b' }).toggleNodeSelection('c');
+const selectedIds: string[] = editor.getSelectedNodeIds();
+const groupMoved: FlowchartNode[] = editor.nudgeNodes(selectedIds, 'right', 24);
+const collapsedNow: boolean = editor.setCollapsed('a', true) && editor.toggleCollapsed('a');
+const visibleNodes: FlowchartNode[] = editor.getVisibleNodes();
+const labelled: boolean =
+  editor.selectSideEdge('a', 'right') && editor.startEdgeLabelEdit('e1', { initialText: 'y' });
+editor.setMinimapEnabled(false).centerViewOn(0, 0);
+const savedNode: FlowchartNode = { ...node, collapsed: true };
 
 editor.layout('radial', { root: 'a', radius: 240 }).autoArrange({ columns: 4 });
 const canUndo: boolean = editor.canUndo();
@@ -58,6 +68,8 @@ const canRedo: boolean = editor.canRedo();
 editor.undo().redo().clearHistory();
 
 editor.on('select', (event: FlowchartSelectEvent) => {
+  const ids: string[] = event.nodeIds;
+  void ids;
   if (event.selection?.kind === 'node') {
     const n: FlowchartNode = event.selection.node;
     void n.id;
@@ -80,6 +92,9 @@ const flowchartProps: VdFlowchartProps = {
   history: true,
   historyLimit: 20,
   keyboardShortcuts: 'mindmap',
+  snapGuides: true,
+  minimap: true,
+  autoLayout: false,
 };
 // @ts-expect-error — `history` is a boolean flag, not a number.
 const badFlowchartProps: VdFlowchartProps = { history: 5 };
@@ -93,6 +108,11 @@ void edge;
 void node;
 void child;
 void branch;
+void groupMoved;
+void collapsedNow;
+void visibleNodes;
+void labelled;
+void savedNode;
 void sibling;
 void navigated;
 void shortcutModes;

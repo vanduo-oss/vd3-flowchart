@@ -7,7 +7,7 @@ modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
 **Status: 1.4.0.** `VD_FLOWCHART_VERSION` tracks the package release.
-`FLOWCHART_DOCUMENT_VERSION` (currently `1.2.0`) is the value `toJSON()`
+`FLOWCHART_DOCUMENT_VERSION` (currently `1.3.0`) is the value `toJSON()`
 writes. Do not reset either independently without a compatibility plan.
 
 ## Install
@@ -53,7 +53,9 @@ if anything but `vue` is externalized. The package declares
 `package.json` version **is** `VD_FLOWCHART_VERSION` (`1.4.0`). Bump those
 together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
 unless the serialized schema changes; add fixtures and explicit compatibility
-rules for a format change. Unversioned 1.x documents through 1.2.0 still load.
+rules for a format change. Unversioned 1.x documents through 1.3.0 still load;
+1.3.0 added the optional node field `collapsed: true`, written only on
+collapsed nodes.
 Malformed JSON and unsupported future versions throw before the active
 document, selection, or history change. This continues the old-line
 `@vanduo-oss/flowchart` lineage (never reset to `1.0.0`). Do not reuse the
@@ -63,7 +65,15 @@ retired npm name `@vanduo-oss/flowchart`.
 
 Hover or select a node to show a connection handle outside each side. Drag a
 handle to connect; click it to add a connected node in that direction. Resize
-from the corner squares or by dragging a side.
+from the corner squares or by dragging a side. Dragged nodes snap to other
+nodes' edges and centres (hold Alt to bypass; `snapGuides: false` turns it
+off). Shift+click or Shift+drag on empty canvas selects several nodes, which
+then move, nudge, copy, duplicate, and delete together. A collapsed branch
+shows a "+N" badge; click it or press Cmd/Ctrl+/ to toggle. The minimap in
+the canvas corner pans the view (`minimap: false` or the toolbar toggle hides
+it). Double-click a connection to edit its label. Set `autoLayout: true` to
+re-run the current tree or radial layout after each keyboard or handle
+insertion.
 
 With the canvas focused, the default `keyboardShortcuts: 'mindmap'` mode
 follows mind-map tools such as XMind and MindNode:
@@ -71,6 +81,10 @@ follows mind-map tools such as XMind and MindNode:
 | Keys | Action |
 | --- | --- |
 | Arrow keys | Select the nearest node in that direction |
+| Shift+Arrow | Select a connection on that side (repeat to cycle) |
+| Enter, F2, or typing on a connection | Edit its label |
+| Cmd/Ctrl+A | Select all nodes |
+| Cmd/Ctrl+/ | Collapse or expand the branch |
 | Tab | Add a child node and edit it |
 | Enter / Shift+Enter | Add a sibling below / above and edit it |
 | F2, Space, or typing | Edit the label |

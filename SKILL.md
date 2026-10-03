@@ -36,6 +36,16 @@ child. Arrows select the nearest node in that direction; Alt+Arrow nudges.
 Shift+Tab, or Esc then Tab, leaves the canvas. `?` lists every shortcut. Use
 `'basic'` when Tab must always move focus; Enter then edits and Ctrl/Cmd+Enter
 saves. A node plus its edge, and naming a just-inserted node, undo in one step.
+Shift+Arrow selects a connection on that side; Enter, F2, or typing edits its
+label. Shift+click, Shift+drag, and Cmd/Ctrl+A select several nodes (the
+`select` event lists them in `nodeIds`). Cmd/Ctrl+/ collapses a branch.
+
+## Canvas options
+
+`snapGuides` (default true) snaps drags to alignment guides; `minimap`
+(default true) shows the overview; `autoLayout` (default false) re-runs the
+current tree or radial layout after insertions. Saved JSON uses document
+format 1.3.0, which adds `collapsed: true` on collapsed nodes only.
 
 ## Verification
 

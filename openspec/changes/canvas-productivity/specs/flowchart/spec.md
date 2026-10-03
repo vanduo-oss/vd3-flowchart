@@ -1,3 +1,17 @@
+## MODIFIED Requirements
+
+### Requirement: flowchart serialization moves to document format 1.3.0
+
+`FLOWCHART_DOCUMENT_VERSION` SHALL be `'1.3.0'` and `toJSON()` SHALL write it.
+Every 1.x document up to 1.3.0 (unversioned, numeric, shortened, 1.1, 1.2.x)
+SHALL load; later versions SHALL be rejected before any state changes.
+
+#### Scenario: serialized documents carry version 1.3.0
+
+- **Given** any editor
+- **When** `toJSON()` is called
+- **Then** `version` MUST be exactly `'1.3.0'` and nodes MUST carry `collapsed` only when collapsed
+
 ## ADDED Requirements
 
 ### Requirement: Connection labels are editable from the keyboard
