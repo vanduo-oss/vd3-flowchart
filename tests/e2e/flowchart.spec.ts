@@ -40,11 +40,11 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     expect(version).toBe('1.4.0');
   });
 
-  test('renders seeded nodes and serializes version 1.2.0', async ({ page }) => {
+  test('renders seeded nodes and serializes version 1.3.0', async ({ page }) => {
     await expect(page.locator('#flowchart .vd-flowchart-node')).toHaveCount(2);
 
     const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
-    expect(doc.version).toBe('1.2.0');
+    expect(doc.version).toBe('1.3.0');
     expect(doc.nodes).toHaveLength(2);
     expect(doc.edges).toHaveLength(1);
   });
@@ -195,6 +195,20 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     expect(dx0).toBeGreaterThan(0);
     expect(dx1).toBeCloseTo(dx0, 2);
     expect(dy1).toBeCloseTo(dy0, 2);
+  });
+
+  test('collapses a branch with the badge and expands it again', async ({ page }) => {
+    const first = page.locator('#flowchart g.vd-flowchart-node').first();
+    await first.locator('.vd-flowchart-node-shape').click();
+    const toggle = first.locator('.vd-flowchart-collapse-toggle');
+    await expect(toggle.locator('text')).toHaveText('−');
+    await toggle.locator('circle').click();
+    await expect(page.locator('#flowchart g.vd-flowchart-node')).toHaveCount(1);
+    await expect(first.locator('.vd-flowchart-collapse-toggle text')).toHaveText('+1');
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect((doc.nodes as Array<{ collapsed?: boolean }>)[0].collapsed).toBe(true);
+    await first.locator('.vd-flowchart-collapse-toggle circle').click();
+    await expect(page.locator('#flowchart g.vd-flowchart-node')).toHaveCount(2);
   });
 
   test.afterEach(() => {

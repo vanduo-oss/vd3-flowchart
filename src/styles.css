@@ -659,6 +659,32 @@
   opacity: 0;
 }
 
+.vd-flowchart-collapse-toggle {
+  cursor: pointer;
+}
+
+.vd-flowchart-collapse-toggle circle {
+  fill: color-mix(in srgb, var(--vd-flowchart-panel) 92%, var(--vd-bg-primary, #fcfbf7));
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.vd-flowchart-collapse-toggle.is-collapsed circle {
+  fill: var(--vd-flowchart-accent);
+}
+
+.vd-flowchart-collapse-toggle text {
+  fill: var(--vd-flowchart-accent);
+  font-family: var(--vd-flowchart-font);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.vd-flowchart-collapse-toggle.is-collapsed text {
+  fill: var(--vd-bg-primary, #fcfbf7);
+}
+
 .vd-flowchart-marquee {
   fill: color-mix(in srgb, var(--vd-flowchart-accent) 10%, transparent);
   stroke: var(--vd-flowchart-accent);

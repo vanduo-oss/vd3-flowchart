@@ -32,6 +32,8 @@ export interface FlowchartNode {
   height: number;
   text: string;
   data: Record<string, unknown>;
+  /** Present (and true) only on collapsed nodes; document format 1.3.0. */
+  collapsed?: true;
 }
 
 export interface FlowchartEndpoint {
@@ -84,6 +86,7 @@ export interface FlowchartNodeInput {
   height?: number;
   text?: string;
   data?: Record<string, unknown>;
+  collapsed?: boolean;
   /** Place relative to another node instead of at the viewport center. */
   relativeTo?: string | FlowchartRelativeTo;
 }
@@ -278,7 +281,13 @@ export class VdFlowchart {
     nodeId: string,
     options?: InsertSiblingNodeOptions,
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
-  duplicateSelection(): FlowchartNode | null;
+  duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
+  /** Collapse or expand a node's branch; undoable, reason `node:collapse`. */
+  setCollapsed(nodeId: string, collapsed: boolean): boolean;
+  toggleCollapsed(nodeId: string): boolean;
+  /** Nodes not hidden inside a collapsed branch. */
+  getVisibleNodes(): FlowchartNode[];
+  isNodeHidden(nodeId: string): boolean;
   nudgeNode(nodeId: string, direction: FlowchartDirection, distance: number): FlowchartNode | null;
   nudgeNodes(nodeIds: string[], direction: FlowchartDirection, distance: number): FlowchartNode[];
   /** Select the nearest node in a direction (spatial keyboard navigation). */

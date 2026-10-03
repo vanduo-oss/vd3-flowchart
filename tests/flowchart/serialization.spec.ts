@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-// Serialization contract for the flowchart core (1.2.0 lineage). Runs in jsdom
-// because VdFlowchart builds its editor shell into a real DOM element; only the
-// document model (toJSON/load) is exercised here — real rendering is a
-// Playwright concern. The `toJSON().version === '1.2.0'` pin is LOAD-BEARING:
+// Serialization contract for the flowchart core (document format 1.3.0). Runs
+// in jsdom because VdFlowchart builds its editor shell into a real DOM element;
+// only the document model (toJSON/load) is exercised here — real rendering is a
+// Playwright concern. The `toJSON().version === '1.3.0'` pin is LOAD-BEARING:
 // the string is serialized into every user document, so a regression here
 // silently corrupts saved diagrams.
 
@@ -42,8 +42,8 @@ describe('flowchart serialization — VERSION manifest sync', () => {
     expect(VD_FLOWCHART_VERSION).toBe('1.4.0');
   });
 
-  it('keeps FLOWCHART_DOCUMENT_VERSION at 1.2.0', () => {
-    expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.2.0');
+  it('keeps FLOWCHART_DOCUMENT_VERSION at 1.3.0', () => {
+    expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.3.0');
   });
 
   it('mirrors package.json version', () => {
@@ -58,10 +58,10 @@ describe('flowchart serialization — toJSON()', () => {
     expect(Object.keys(doc).sort()).toEqual(['edges', 'nodes', 'version', 'viewport']);
   });
 
-  it('emits the load-bearing 1.2.0 version string', () => {
+  it('emits the load-bearing 1.3.0 version string', () => {
     const core = makeCore();
     // LOAD-BEARING: this exact string is persisted into user documents.
-    expect(core.toJSON().version).toBe('1.2.0');
+    expect(core.toJSON().version).toBe('1.3.0');
   });
 
   it('serializes nodes and edges added through the model', () => {
@@ -90,7 +90,7 @@ describe('flowchart serialization — toJSON()', () => {
     doc.nodes.push({ id: 'ghost' });
 
     const fresh = core.toJSON();
-    expect(fresh.version).toBe('1.2.0');
+    expect(fresh.version).toBe('1.3.0');
     expect(fresh.nodes).toHaveLength(1);
     expect(fresh.nodes[0].id).toBe(node.id);
     expect(fresh.nodes[0].text).toBe('Original');
@@ -158,11 +158,13 @@ describe('flowchart serialization — backward compatibility (frozen 1.x fixture
     expect(line.label).toBe('next');
   });
 
-  it('re-serializes the loaded 1.x document as version 1.2.0', () => {
+  it('re-serializes the loaded 1.x document as version 1.3.0 with no collapsed keys', () => {
     const core = makeCore();
     core.load(fixtureDoc);
     // LOAD-BEARING: an old document round-trips forward, never backward.
-    expect(core.toJSON().version).toBe('1.2.0');
+    const doc = core.toJSON();
+    expect(doc.version).toBe('1.3.0');
+    expect(doc.nodes.some((node: Record<string, unknown>) => 'collapsed' in node)).toBe(false);
   });
 
   it('never mutates the imported fixture object', () => {
@@ -189,7 +191,7 @@ describe('flowchart serialization — bounded deserialization (untrusted documen
     const doc = core.toJSON();
     expect(doc.nodes).toHaveLength(MAX_NODES);
     // LOAD-BEARING: truncation must not disturb the serialized version.
-    expect(doc.version).toBe('1.2.0');
+    expect(doc.version).toBe('1.3.0');
   }, 60000);
 
   it('truncates edges beyond MAX_EDGES without throwing', () => {
@@ -221,7 +223,7 @@ describe('flowchart serialization — bounded deserialization (untrusted documen
 
     expect(doc.nodes.map((n: { id: string }) => n.id)).toEqual([a.id, b.id]);
     expect(doc.edges).toHaveLength(1);
-    expect(doc.version).toBe('1.2.0');
+    expect(doc.version).toBe('1.3.0');
   });
 });
 
@@ -233,7 +235,8 @@ describe('document validation preserves current work', () => {
     '{"nodes":{}}',
     '{"edges":42}',
     '{"version":"2.0.0"}',
-    '{"version":"1.2.1"}',
+    '{"version":"1.3.1"}',
+    '{"version":"1.4.0"}',
     '{"version":"unknown"}',
   ])('rejects %s atomically', (input) => {
     const core = makeCore();
@@ -252,18 +255,21 @@ describe('document validation preserves current work', () => {
     expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
   });
 
-  it.each(['1', '1.2', 1.2, '1.1.0'])('accepts legacy 1.x version %j', (version) => {
-    const core = makeCore();
-    expect(() =>
-      core.load({
-        version,
-        nodes: [{ id: 'legacy', text: 'Old' }],
-        edges: [],
-      }),
-    ).not.toThrow();
-    expect(core.toJSON().nodes[0].id).toBe('legacy');
-    expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
-  });
+  it.each(['1', '1.2', 1.2, '1.1.0', '1.2.0', '1.2.1'])(
+    'accepts legacy 1.x version %j',
+    (version) => {
+      const core = makeCore();
+      expect(() =>
+        core.load({
+          version,
+          nodes: [{ id: 'legacy', text: 'Old' }],
+          edges: [],
+        }),
+      ).not.toThrow();
+      expect(core.toJSON().nodes[0].id).toBe('legacy');
+      expect(core.toJSON().version).toBe(FLOWCHART_DOCUMENT_VERSION);
+    },
+  );
 
   it('reports invalid pasted JSON without clearing the graph', () => {
     const core = makeCore({ data: { nodes: [{ id: 'a' }] } });

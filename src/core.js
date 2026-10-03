@@ -101,6 +101,8 @@ const RESIZE_HANDLE_SIZE = 9;
 const SELECTION_OUTSET = 4;
 const GUIDE_SNAP_DISTANCE = 6;
 const GUIDE_OVERHANG = 12;
+// Beyond the connection handle (12px out, 14px hit radius) so both stay usable.
+const COLLAPSE_TOGGLE_OFFSET = 36;
 const MINIMAP_WIDTH = 180;
 const MINIMAP_HEIGHT = 120;
 const MINIMAP_MIN_CANVAS_WIDTH = 480;
@@ -123,7 +125,7 @@ const EDGE_STROKE_PRESETS = [
 
 export const VD_FLOWCHART_VERSION = '1.4.0';
 /** Serialized schema version; change only when the document format changes. */
-export const FLOWCHART_DOCUMENT_VERSION = '1.2.0';
+export const FLOWCHART_DOCUMENT_VERSION = '1.3.0';
 export const FLOWCHART_NODE_TYPES = [
   'rounded-rect',
   'rect',
@@ -185,6 +187,7 @@ function getShortcutRows(mode, readonly) {
       mode === 'mindmap' ? 'Enter, F2, or type on a connection' : 'Enter or F2 on a connection',
       'Edit the connection label',
     ],
+    ['Cmd/Ctrl + /', 'Collapse or expand the branch'],
     ['Alt + Arrow', 'Nudge the node (add Shift for 1 px)'],
     ['Delete or Backspace', 'Delete the selection'],
     ['Cmd/Ctrl + D', 'Duplicate the node'],
@@ -412,7 +415,7 @@ function normalizeNode(rawNode, index, usedIds) {
   const type = normalizeNodeType(rawNode?.type);
   const spec = getNodeSpec(type);
 
-  return {
+  const node = {
     id: ensureUniqueId(rawNode?.id, 'node', usedIds),
     type,
     x: toFiniteNumber(rawNode?.x, index * 28),
@@ -422,6 +425,47 @@ function normalizeNode(rawNode, index, usedIds) {
     text: rawNode?.text == null ? spec.text : String(rawNode.text),
     data: isPlainObject(rawNode?.data) ? deepClone(rawNode.data) : {},
   };
+  // Written only when true so expanded nodes serialize as in format 1.2.0.
+  if (rawNode?.collapsed === true) node.collapsed = true;
+  return node;
+}
+
+// Nodes hidden by collapsed branches. Every descendant of a collapsed node is
+// a candidate (the collapsed node itself is not, so a loop back to it cannot
+// hide it); a candidate stays visible when it is also reachable through an
+// expanded node outside the candidates. Linear in nodes plus edges.
+function computeHiddenNodeIds(nodes, edges) {
+  const collapsed = new Set(nodes.filter((node) => node.collapsed).map((node) => node.id));
+  if (!collapsed.size) return new Set();
+  const outgoing = new Map(nodes.map((node) => [node.id, []]));
+  edges.forEach((edge) => {
+    if (edge.from.nodeId === edge.to.nodeId) return;
+    outgoing.get(edge.from.nodeId)?.push(edge.to.nodeId);
+  });
+
+  const candidates = new Set();
+  collapsed.forEach((rootId) => {
+    const queue = [...(outgoing.get(rootId) || [])];
+    for (let index = 0; index < queue.length; index += 1) {
+      const id = queue[index];
+      if (id === rootId || candidates.has(id)) continue;
+      candidates.add(id);
+      queue.push(...(outgoing.get(id) || []));
+    }
+  });
+
+  const queue = nodes
+    .filter((node) => !candidates.has(node.id) && !collapsed.has(node.id))
+    .map((node) => node.id);
+  for (let index = 0; index < queue.length; index += 1) {
+    const id = queue[index];
+    (outgoing.get(id) || []).forEach((childId) => {
+      if (!candidates.has(childId)) return;
+      candidates.delete(childId);
+      if (!collapsed.has(childId)) queue.push(childId);
+    });
+  }
+  return candidates;
 }
 
 function normalizeEndpoint(rawEndpoint, fallbackPort) {
@@ -1796,8 +1840,9 @@ export class VdFlowchart {
       ? `Selected: ${labels.get(selected)}. ${nodes.length} nodes, ${edges.length} connections.`
       : `${nodes.length} nodes, ${edges.length} connections.`;
     if (!this.graphOutline.open) return;
+    const hidden = this.getHiddenNodeIds();
     const signature = JSON.stringify([
-      nodes.map((node) => [node.id, node.text]),
+      nodes.map((node) => [node.id, node.text, Boolean(node.collapsed), hidden.has(node.id)]),
       edges.map((edge) => [edge.id, edge.from.nodeId, edge.to.nodeId, edge.label]),
     ]);
     if (signature !== this.graphSignature) {
@@ -1826,7 +1871,9 @@ export class VdFlowchart {
         const relationships = [
           to.length ? `Connects to ${to.join(', ')}.` : 'No outgoing connections.',
           from.length ? `Connected from ${from.join(', ')}.` : '',
-        ];
+          node.collapsed ? 'Branch collapsed.' : '',
+          hidden.has(node.id) ? 'Hidden in a collapsed branch.' : '',
+        ].filter(Boolean);
         this.graphList.appendChild(
           createElement('li', { text: `${labels.get(node.id)}. ${relationships.join(' ')}` }),
         );
@@ -2347,6 +2394,10 @@ export class VdFlowchart {
         this.selectNodes(this.getVisibleNodes().map((node) => node.id));
         return true;
       }
+      if (key === '/' && selectedNode && !this.hasMultiSelection()) {
+        this.toggleCollapsed(selectedNode.id);
+        return true;
+      }
       return false;
     }
     if (event.shiftKey && !event.altKey && (key === '!' || event.code === 'Digit1')) {
@@ -2369,7 +2420,7 @@ export class VdFlowchart {
       return true;
     }
 
-    const nodes = this.documentData.nodes;
+    const nodes = this.getVisibleNodes();
     if ((key === 'Home' || key === 'End') && nodes.length) {
       this.selectNode(nodes[key === 'Home' ? 0 : nodes.length - 1].id);
       return true;
@@ -2411,7 +2462,7 @@ export class VdFlowchart {
   // Move the selection to the nearest node in `direction`; with nothing (or an
   // edge) selected, start from the node closest to the centre of the view.
   navigateSelection(direction) {
-    const nodes = this.documentData.nodes;
+    const nodes = this.getVisibleNodes();
     if (!nodes.length) return false;
     const current = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
     const edge = this.selection?.kind === 'edge' ? this.findEdge(this.selection.id) : null;
@@ -2562,8 +2613,9 @@ export class VdFlowchart {
 
   pasteNodeData(data) {
     const usedIds = new Set(this.documentData.nodes.map((node) => node.id));
+    // A lone copy has no children, so it cannot stay collapsed.
     const node = normalizeNode(
-      { ...data, id: undefined, x: data.x + 24, y: data.y + 24 },
+      { ...data, id: undefined, collapsed: undefined, x: data.x + 24, y: data.y + 24 },
       this.documentData.nodes.length,
       usedIds,
     );
@@ -2643,7 +2695,13 @@ export class VdFlowchart {
     }
 
     const nodeTarget = event.target.closest('[data-node-id]');
-    if (!nodeTarget || event.target.closest('[data-edge-id]')) return;
+    if (
+      !nodeTarget ||
+      event.target.closest('[data-edge-id]') ||
+      event.target.closest('[data-collapse-toggle]')
+    ) {
+      return;
+    }
     const nodeId = nodeTarget.getAttribute('data-node-id');
     if (this.startTextEdit(nodeId)) {
       event.preventDefault();
@@ -2657,7 +2715,8 @@ export class VdFlowchart {
     if (
       !nodeTarget ||
       event.target.closest('[data-port]') ||
-      event.target.closest('[data-resize-handle]')
+      event.target.closest('[data-resize-handle]') ||
+      event.target.closest('[data-collapse-toggle]')
     )
       return;
     if (this.startTextEdit(nodeTarget.getAttribute('data-node-id'))) {
@@ -2674,6 +2733,13 @@ export class VdFlowchart {
     }
 
     this.canvasEl.focus();
+    const collapseTarget = event.target.closest('[data-collapse-toggle]');
+    if (collapseTarget) {
+      this.lastNodePointer = null;
+      this.toggleCollapsed(collapseTarget.getAttribute('data-collapse-toggle'));
+      event.preventDefault();
+      return;
+    }
     const nodeTarget = event.target.closest('[data-node-id]');
     const portTarget = event.target.closest('[data-port]');
     const resizeTarget = event.target.closest('[data-resize-handle]');
@@ -3300,7 +3366,7 @@ export class VdFlowchart {
     const snapPadding = CONNECTION_SNAP_PADDING / this.documentData.viewport.scale;
     const hysteresisMargin = CONNECTION_HYSTERESIS / this.documentData.viewport.scale;
 
-    const best = this.documentData.nodes.reduce((candidate, node) => {
+    const best = this.getVisibleNodes().reduce((candidate, node) => {
       if (node.id === excludeNodeId) return candidate;
       const distanceToBounds = getDistanceToNodeBounds(node, worldPoint);
       if (distanceToBounds > snapPadding) return candidate;
@@ -3487,9 +3553,12 @@ export class VdFlowchart {
       }
     };
     // Typed characters must land in the editor, so focus it synchronously;
-    // the frame callback re-applies focus after the browser settles layout.
+    // the frame callback only restores focus if the browser moved it, so it
+    // never re-selects text the user has already started typing.
     focusEditor();
-    window.requestAnimationFrame(focusEditor);
+    window.requestAnimationFrame(() => {
+      if (document.activeElement !== textarea) focusEditor();
+    });
 
     return true;
   }
@@ -3538,7 +3607,9 @@ export class VdFlowchart {
       else textarea.select();
     };
     focusEditor();
-    window.requestAnimationFrame(focusEditor);
+    window.requestAnimationFrame(() => {
+      if (document.activeElement !== textarea) focusEditor();
+    });
     return true;
   }
 
@@ -3690,7 +3761,12 @@ export class VdFlowchart {
     clearChildren(this.nodesLayer);
     clearChildren(this.overlayLayer);
 
-    const nodeMap = new Map(this.documentData.nodes.map((node) => [node.id, node]));
+    const hidden = this.getHiddenNodeIds();
+    this.sceneHidden = hidden;
+    this.sceneOutgoing = this.getOutgoingMap();
+    const nodeMap = new Map(
+      this.documentData.nodes.filter((node) => !hidden.has(node.id)).map((node) => [node.id, node]),
+    );
     this.sceneNodeMap = nodeMap;
     this.nodeElements = new Map();
     this.edgeElements = new Map();
@@ -3713,6 +3789,7 @@ export class VdFlowchart {
     }
 
     this.documentData.nodes.forEach((node) => {
+      if (hidden.has(node.id)) return;
       const element = this.renderNode(node);
       this.nodesLayer.appendChild(element);
       this.nodeElements.set(node.id, element);
@@ -3928,7 +4005,11 @@ export class VdFlowchart {
       group.appendChild(this.renderResizeControls(node));
     }
 
-    if (this.readonly) return group;
+    const collapseToggle = this.renderCollapseToggle(node, soloSelected);
+    if (this.readonly) {
+      if (collapseToggle) group.appendChild(collapseToggle);
+      return group;
+    }
 
     FLOWCHART_PORTS.forEach((port) => {
       const position = getPortHandlePosition({ ...node, x: 0, y: 0 }, port, scale);
@@ -3962,7 +4043,60 @@ export class VdFlowchart {
       );
       group.appendChild(portGroup);
     });
+    if (collapseToggle) group.appendChild(collapseToggle);
 
+    return group;
+  }
+
+  // "+N" on a collapsed node, or "−" on a single selected node with children,
+  // placed beyond the connection handle on the side its branch leaves from.
+  renderCollapseToggle(node, soloSelected) {
+    const outgoing = this.sceneOutgoing || this.getOutgoingMap();
+    const childIds = (outgoing.get(node.id) || []).filter((id) => id !== node.id);
+    if (!childIds.length) return null;
+    const count = node.collapsed
+      ? this.countCollapsedDescendants(
+          node.id,
+          this.sceneHidden || this.getHiddenNodeIds(),
+          outgoing,
+        )
+      : 0;
+    if (!node.collapsed && !(soloSelected && !this.readonly)) return null;
+
+    const sides = new Map();
+    this.documentData.edges.forEach((edge) => {
+      if (edge.from.nodeId !== node.id || edge.to.nodeId === node.id) return;
+      sides.set(edge.from.port, (sides.get(edge.from.port) || 0) + 1);
+    });
+    const port =
+      [...sides].sort((a, b) => b[1] - a[1])[0]?.[0] ||
+      DIRECTION_PORTS[this.getGrowthDirection(node)];
+    const scale = this.documentData.viewport.scale || 1;
+    const anchor = getPortPosition({ ...node, x: 0, y: 0 }, port);
+    const normal = getPortNormal(port);
+    const offset = COLLAPSE_TOGGLE_OFFSET / scale;
+    const cx = formatNumber(anchor.x + normal.x * offset);
+    const cy = formatNumber(anchor.y + normal.y * offset);
+    const label = node.collapsed ? `+${count}` : '−';
+    const radius = (node.collapsed && label.length > 2 ? 12 : 9) / scale;
+
+    const group = svgEl('g', {
+      class: `vd-flowchart-collapse-toggle${node.collapsed ? ' is-collapsed' : ''}`,
+      'data-collapse-toggle': node.id,
+    });
+    const title = svgEl('title');
+    title.textContent = node.collapsed ? `Expand ${count} hidden nodes` : 'Collapse branch';
+    group.appendChild(title);
+    group.appendChild(svgEl('circle', { cx, cy, r: formatNumber(radius) }));
+    const text = svgEl('text', {
+      x: cx,
+      y: cy,
+      'font-size': formatNumber(10 / scale),
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+    });
+    text.textContent = label;
+    group.appendChild(text);
     return group;
   }
 
@@ -4379,8 +4513,9 @@ export class VdFlowchart {
       return;
     }
     const existing = new Set(this.documentData.nodes.map((node) => node.id));
+    const hidden = this.getHiddenNodeIds();
     this.selectedNodeIds = new Set(
-      [...(this.selectedNodeIds || [])].filter((id) => existing.has(id)),
+      [...(this.selectedNodeIds || [])].filter((id) => existing.has(id) && !hidden.has(id)),
     );
     this.selectedNodeIds.add(this.selection.id);
   }
@@ -4443,8 +4578,83 @@ export class VdFlowchart {
     return this.documentData.nodes.find((node) => node.id === nodeId) || null;
   }
 
+  getHiddenNodeIds() {
+    return computeHiddenNodeIds(this.documentData.nodes, this.documentData.edges);
+  }
+
   getVisibleNodes() {
-    return this.documentData.nodes;
+    const hidden = this.getHiddenNodeIds();
+    return hidden.size
+      ? this.documentData.nodes.filter((node) => !hidden.has(node.id))
+      : this.documentData.nodes;
+  }
+
+  isNodeHidden(nodeId) {
+    return this.getHiddenNodeIds().has(nodeId);
+  }
+
+  getOutgoingMap() {
+    const outgoing = new Map();
+    this.documentData.edges.forEach((edge) => {
+      if (!outgoing.has(edge.from.nodeId)) outgoing.set(edge.from.nodeId, []);
+      outgoing.get(edge.from.nodeId).push(edge.to.nodeId);
+    });
+    return outgoing;
+  }
+
+  // Hidden nodes under one collapsed node (its "+N" count).
+  countCollapsedDescendants(
+    nodeId,
+    hidden = this.getHiddenNodeIds(),
+    outgoing = this.getOutgoingMap(),
+  ) {
+    const seen = new Set();
+    const queue = [nodeId];
+    for (let index = 0; index < queue.length; index += 1) {
+      (outgoing.get(queue[index]) || []).forEach((childId) => {
+        if (seen.has(childId) || !hidden.has(childId)) return;
+        seen.add(childId);
+        queue.push(childId);
+      });
+    }
+    return seen.size;
+  }
+
+  setCollapsed(nodeId, collapsed) {
+    if (this.readonly) return false;
+    const node = this.findNode(sanitizeId(nodeId));
+    if (!node) return false;
+    const next = Boolean(collapsed);
+    if (Boolean(node.collapsed) === next) return false;
+    if (next && !this.getChildNodes(node.id).length) return false;
+    if (next) node.collapsed = true;
+    else delete node.collapsed;
+
+    // Keep the selection on something visible.
+    if (this.selection?.kind === 'node') {
+      const hidden = this.getHiddenNodeIds();
+      const visibleIds = this.getSelectedNodeIds().filter((id) => !hidden.has(id));
+      if (hidden.has(this.selection.id)) {
+        this.select({ kind: 'node', id: node.id });
+      } else if (visibleIds.length !== this.selectedNodeIds.size) {
+        this.selectNodes(visibleIds, { primary: this.selection.id });
+      }
+    } else if (this.selection?.kind === 'edge') {
+      const edge = this.findEdge(this.selection.id);
+      const hidden = this.getHiddenNodeIds();
+      if (edge && (hidden.has(edge.from.nodeId) || hidden.has(edge.to.nodeId))) {
+        this.select({ kind: 'node', id: node.id });
+      }
+    }
+
+    this.render({ inspector: true, json: true });
+    this.emitChange('node:collapse', { node: deepClone(node) });
+    return true;
+  }
+
+  toggleCollapsed(nodeId) {
+    const node = this.findNode(sanitizeId(nodeId));
+    return node ? this.setCollapsed(node.id, !node.collapsed) : false;
   }
 
   findEdge(edgeId) {
@@ -4784,6 +4994,8 @@ export class VdFlowchart {
       : { endMarker: 'arrow' };
 
     const result = this.batchHistory('node:insert', () => {
+      // A new child must be visible, so its branch opens in the same step.
+      if (parent.collapsed) delete parent.collapsed;
       const node = this.addNode({ ...template, x: position.x, y: position.y });
       const edge = this.addEdge({
         from: { nodeId: parent.id, port: DIRECTION_PORTS[direction] },
@@ -5165,11 +5377,12 @@ export class VdFlowchart {
   }
 
   fitView() {
-    if (!this.documentData.nodes.length) {
+    const nodes = this.getVisibleNodes();
+    if (!nodes.length) {
       return this.resetView();
     }
 
-    const bounds = getBounds(this.documentData.nodes);
+    const bounds = getBounds(nodes);
     const width = this.canvasEl.clientWidth || 800;
     const height = this.canvasEl.clientHeight || 560;
     const padding = 80;
