@@ -182,7 +182,10 @@ export interface FlowchartChangeEvent {
 }
 
 export interface FlowchartSelectEvent {
+  /** Primary item; keeps its single-item shape when several nodes are selected. */
   selection: FlowchartSelection | null;
+  /** Every selected node id, the primary node included. */
+  nodeIds: string[];
 }
 
 export interface FlowchartViewportEvent {
@@ -243,6 +246,11 @@ export class VdFlowchart {
   selectNode(nodeId: string): this;
   selectEdge(edgeId: string): this;
   deselect(): this;
+  /** Select several nodes; `primary` (default: the last id) drives single-node UI. */
+  selectNodes(nodeIds: string[], options?: { primary?: string }): this;
+  toggleNodeSelection(nodeId: string): this;
+  getSelectedNodeIds(): string[];
+  isNodeSelected(nodeId: string): boolean;
 
   // Events
   on<K extends keyof FlowchartEventMap>(
@@ -272,6 +280,7 @@ export class VdFlowchart {
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
   duplicateSelection(): FlowchartNode | null;
   nudgeNode(nodeId: string, direction: FlowchartDirection, distance: number): FlowchartNode | null;
+  nudgeNodes(nodeIds: string[], direction: FlowchartDirection, distance: number): FlowchartNode[];
   /** Select the nearest node in a direction (spatial keyboard navigation). */
   navigateSelection(direction: FlowchartDirection): boolean;
   updateNode(

@@ -153,6 +153,8 @@ function getShortcutRows(mode, readonly) {
   const navigation = [
     ['Arrow keys', 'Select the nearest node in that direction'],
     ['Shift + Arrow', 'Select a connection on that side (repeat to cycle)'],
+    ['Shift + click, Shift + drag', 'Add nodes to the selection, or select with a box'],
+    ['Cmd/Ctrl + A', 'Select all nodes'],
   ];
   const view = [
     ['Cmd/Ctrl + = or -', 'Zoom in or out'],
@@ -1355,6 +1357,7 @@ export class VdFlowchart {
     this.documentData = normalizeDocument(options.data || {});
     this.listeners = {};
     this.selection = null;
+    this.selectedNodeIds = new Set();
     this.interaction = null;
     this.activeTool = null;
     this.layoutMode = 'tree';
@@ -2303,7 +2306,7 @@ export class VdFlowchart {
     if (!this.selection) return;
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
-      if (this.selection.kind === 'node') {
+      if (this.selection.kind === 'node' && !this.hasMultiSelection()) {
         const removedId = this.selection.id;
         const parent = this.getParentNode(removedId);
         const sibling = parent
@@ -2327,7 +2330,9 @@ export class VdFlowchart {
     const mindmap = this.keyboardShortcuts === 'mindmap';
     const selectedNode = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
     const selectedEdge = this.selection?.kind === 'edge' ? this.findEdge(this.selection.id) : null;
-    const editable = !this.readonly && Boolean(selectedNode);
+    const movable = !this.readonly && Boolean(selectedNode);
+    // Insertion and label keys act on one node; a group only moves or deletes.
+    const editable = movable && !this.hasMultiSelection();
 
     if (key === '?' && !modKey && !event.altKey) {
       this.toggleShortcutsHelp();
@@ -2338,6 +2343,10 @@ export class VdFlowchart {
       if (key === '=' || key === '+') return Boolean(this.zoomIn());
       if (key === '-' || key === '_') return Boolean(this.zoomOut());
       if (key === '0') return Boolean(this.zoomTo(1));
+      if (key === 'a' || key === 'A') {
+        this.selectNodes(this.getVisibleNodes().map((node) => node.id));
+        return true;
+      }
       return false;
     }
     if (event.shiftKey && !event.altKey && (key === '!' || event.code === 'Digit1')) {
@@ -2347,8 +2356,8 @@ export class VdFlowchart {
     const direction = ARROW_DIRECTIONS[key];
     if (direction) {
       if (event.altKey) {
-        if (editable) {
-          this.nudgeNode(selectedNode.id, direction, event.shiftKey ? 1 : this.gridSize);
+        if (movable) {
+          this.nudgeNodes(this.getSelectedNodeIds(), direction, event.shiftKey ? 1 : this.gridSize);
         }
         return true;
       }
@@ -2457,15 +2466,27 @@ export class VdFlowchart {
   }
 
   nudgeNode(nodeId, direction, distance) {
-    const node = this.findNode(nodeId);
-    if (!node || this.readonly) return null;
+    const [node] = this.nudgeNodes([nodeId], direction, distance);
+    return node || null;
+  }
+
+  // Move nodes together; repeated nudges of the same selection coalesce into
+  // one undo step.
+  nudgeNodes(nodeIds, direction, distance) {
     const step = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] }[direction];
-    if (!step) return null;
-    node.x = formatNumber(node.x + step[0] * distance);
-    node.y = formatNumber(node.y + step[1] * distance);
+    if (this.readonly || !step) return [];
+    const nodes = nodeIds.map((id) => this.findNode(id)).filter(Boolean);
+    if (!nodes.length) return [];
+    nodes.forEach((node) => {
+      node.x = formatNumber(node.x + step[0] * distance);
+      node.y = formatNumber(node.y + step[1] * distance);
+    });
     this.render({ inspector: true, json: true });
-    this.emitChange('node:nudge', { node: deepClone(node) });
-    return deepClone(node);
+    this.emitChange(
+      'node:nudge',
+      nodes.length > 1 ? { nodeIds: nodes.map((node) => node.id) } : { node: deepClone(nodes[0]) },
+    );
+    return nodes.map((node) => deepClone(node));
   }
 
   zoomTo(scale) {
@@ -2483,8 +2504,60 @@ export class VdFlowchart {
 
   duplicateSelection() {
     if (this.readonly || this.selection?.kind !== 'node') return null;
+    if (this.hasMultiSelection()) return this.pasteNodeGroup(this.captureNodeGroup());
     const node = this.findNode(this.selection.id);
     return node ? this.pasteNodeData(node) : null;
+  }
+
+  // Selected nodes plus the connections that run between them.
+  captureNodeGroup() {
+    const ids = new Set(this.getSelectedNodeIds());
+    return {
+      nodes: deepClone(this.documentData.nodes.filter((node) => ids.has(node.id))),
+      edges: deepClone(
+        this.documentData.edges.filter(
+          (edge) => ids.has(edge.from.nodeId) && ids.has(edge.to.nodeId),
+        ),
+      ),
+    };
+  }
+
+  // Paste a captured group offset by one step, remapping ids so internal
+  // connections follow their copies. One change, one undo step.
+  pasteNodeGroup(group) {
+    if (this.readonly || !group?.nodes?.length) return [];
+    const usedNodeIds = new Set(this.documentData.nodes.map((node) => node.id));
+    const idMap = new Map();
+    const nodes = group.nodes.map((data, index) => {
+      const node = normalizeNode(
+        { ...data, id: undefined, x: data.x + 24, y: data.y + 24 },
+        this.documentData.nodes.length + index,
+        usedNodeIds,
+      );
+      idMap.set(data.id, node.id);
+      return node;
+    });
+    this.documentData.nodes.push(...nodes);
+    const nodeIds = new Set(this.documentData.nodes.map((node) => node.id));
+    const usedEdgeIds = new Set(this.documentData.edges.map((edge) => edge.id));
+    group.edges.forEach((data, index) => {
+      const edge = normalizeEdge(
+        {
+          ...data,
+          id: undefined,
+          from: { ...data.from, nodeId: idMap.get(data.from.nodeId) },
+          to: { ...data.to, nodeId: idMap.get(data.to.nodeId) },
+        },
+        this.documentData.edges.length + index,
+        nodeIds,
+        usedEdgeIds,
+      );
+      if (edge) this.documentData.edges.push(edge);
+    });
+    const ids = nodes.map((node) => node.id);
+    this.selectNodes(ids);
+    this.emitChange('nodes:add', { nodeIds: ids });
+    return nodes.map((node) => deepClone(node));
   }
 
   pasteNodeData(data) {
@@ -2502,6 +2575,10 @@ export class VdFlowchart {
 
   copySelection() {
     if (!this.selection) return false;
+    if (this.hasMultiSelection()) {
+      this.clipboard = { kind: 'nodes', data: this.captureNodeGroup() };
+      return true;
+    }
     if (this.selection.kind === 'node') {
       const node = this.findNode(this.selection.id);
       if (!node) return false;
@@ -2520,6 +2597,12 @@ export class VdFlowchart {
     if (this.clipboard.kind === 'node') {
       this.pasteNodeData(this.clipboard.data);
       return true;
+    }
+    if (this.clipboard.kind === 'nodes') {
+      const pasted = this.pasteNodeGroup(this.clipboard.data);
+      // Repeated pastes keep stepping instead of stacking on one spot.
+      this.clipboard = { kind: 'nodes', data: this.captureNodeGroup() };
+      return pasted.length > 0;
     }
 
     const usedIds = new Set(this.documentData.edges.map((edge) => edge.id));
@@ -2630,6 +2713,14 @@ export class VdFlowchart {
       return;
     }
 
+    if (nodeTarget && !portTarget && !resizeTarget && !edgeTarget && event.shiftKey) {
+      this.reconnectEdgeId = null;
+      this.lastNodePointer = null;
+      this.toggleNodeSelection(nodeTarget.getAttribute('data-node-id'));
+      event.preventDefault();
+      return;
+    }
+
     if (nodeTarget && !portTarget && !resizeTarget && !edgeTarget && !this.readonly) {
       if (this.activeTool === 'arrow') {
         this.select({ kind: 'node', id: nodeTarget.getAttribute('data-node-id') });
@@ -2718,13 +2809,32 @@ export class VdFlowchart {
     if (nodeTarget) {
       this.reconnectEdgeId = null;
       const nodeId = nodeTarget.getAttribute('data-node-id');
-      this.select({ kind: 'node', id: nodeId });
+      // Pressing a node that is part of a group keeps the group and drags it.
+      const groupIds =
+        this.hasMultiSelection() && this.isNodeSelected(nodeId)
+          ? this.getSelectedNodeIds()
+          : [nodeId];
+      if (groupIds.length > 1) this.selectNodes(groupIds, { primary: nodeId });
+      else this.select({ kind: 'node', id: nodeId });
 
       if (!this.readonly) {
-        this.interaction = this.createDragInteraction(event, nodeId, [nodeId]);
+        this.interaction = this.createDragInteraction(event, nodeId, groupIds);
         this.capturePointer(event.pointerId);
       }
 
+      return;
+    }
+
+    if (event.shiftKey) {
+      const startWorld = this.clientToWorld(event.clientX, event.clientY);
+      this.interaction = {
+        kind: 'marquee',
+        pointerId: event.pointerId,
+        startWorld,
+        baseIds: this.selection?.kind === 'node' ? this.getSelectedNodeIds() : [],
+      };
+      this.capturePointer(event.pointerId);
+      event.preventDefault();
       return;
     }
 
@@ -2814,6 +2924,43 @@ export class VdFlowchart {
     this.renderGuides(guides);
   }
 
+  // Live marquee: select every visible node the box touches, added to the
+  // selection the gesture started from.
+  updateMarquee(event) {
+    const interaction = this.interaction;
+    const world = this.clientToWorld(event.clientX, event.clientY);
+    const box = {
+      left: Math.min(interaction.startWorld.x, world.x),
+      top: Math.min(interaction.startWorld.y, world.y),
+      right: Math.max(interaction.startWorld.x, world.x),
+      bottom: Math.max(interaction.startWorld.y, world.y),
+    };
+    clearChildren(this.guidesLayer);
+    this.guidesLayer.appendChild(
+      svgEl('rect', {
+        class: 'vd-flowchart-marquee',
+        x: formatNumber(box.left),
+        y: formatNumber(box.top),
+        width: formatNumber(box.right - box.left),
+        height: formatNumber(box.bottom - box.top),
+      }),
+    );
+    const hits = this.getVisibleNodes()
+      .filter(
+        (node) =>
+          node.x <= box.right &&
+          node.x + node.width >= box.left &&
+          node.y <= box.bottom &&
+          node.y + node.height >= box.top,
+      )
+      .map((node) => node.id);
+    const ids = [...new Set([...interaction.baseIds, ...hits])];
+    const key = ids.join(',');
+    if (key === interaction.lastKey) return;
+    interaction.lastKey = key;
+    this.selectNodes(ids, { primary: hits[hits.length - 1] });
+  }
+
   renderGuides(guides) {
     clearChildren(this.guidesLayer);
     guides.forEach((guide) => {
@@ -2834,6 +2981,11 @@ export class VdFlowchart {
 
     if (this.interaction.kind === 'drag-node') {
       this.moveDraggedNodes(event);
+      return;
+    }
+
+    if (this.interaction.kind === 'marquee') {
+      this.updateMarquee(event);
       return;
     }
 
@@ -2985,11 +3137,20 @@ export class VdFlowchart {
       return;
     }
 
+    if (interaction.kind === 'marquee') {
+      clearChildren(this.guidesLayer);
+      return;
+    }
+
     if (interaction.kind === 'drag-node') {
       clearChildren(this.guidesLayer);
       if (interaction.moved) {
         this.render({ inspector: true, json: true });
-        this.emitChange('node:move', { node: deepClone(this.findNode(interaction.nodeId)) });
+        if (interaction.nodeIds.length > 1) {
+          this.emitChange('nodes:move', { nodeIds: [...interaction.nodeIds] });
+        } else {
+          this.emitChange('node:move', { node: deepClone(this.findNode(interaction.nodeId)) });
+        }
       } else {
         this.render({ inspector: false, json: false });
       }
@@ -3105,7 +3266,9 @@ export class VdFlowchart {
     if (this.readonly) return false;
     if (this.interaction?.kind === 'connect' || this.interaction?.kind === 'reconnect') return true;
     if (this.activeTool === 'arrow') return true;
-    return this.selection?.kind === 'node' && this.selection.id === node.id;
+    return (
+      this.selection?.kind === 'node' && this.selection.id === node.id && !this.hasMultiSelection()
+    );
   }
 
   getMarkerId(markerType, position, strokeWidth) {
@@ -3515,6 +3678,7 @@ export class VdFlowchart {
   }
 
   renderScene() {
+    this.syncSelectedNodeIds();
     const viewport = this.documentData.viewport;
     this.world.setAttribute(
       'transform',
@@ -3713,8 +3877,11 @@ export class VdFlowchart {
   }
 
   renderNode(node) {
-    const selected = this.selection?.kind === 'node' && this.selection.id === node.id;
-    const dragging = this.interaction?.kind === 'drag-node' && this.interaction.nodeId === node.id;
+    const selected = this.isNodeSelected(node.id);
+    // Frames and handles describe one node; a group shows only the outline.
+    const soloSelected = selected && !this.hasMultiSelection();
+    const dragging =
+      this.interaction?.kind === 'drag-node' && this.interaction.nodeIds.includes(node.id);
     const resizing =
       this.interaction?.kind === 'resize-node' && this.interaction.nodeId === node.id;
     const editing = this.textEditor?.nodeId === node.id;
@@ -3744,7 +3911,7 @@ export class VdFlowchart {
     group.appendChild(this.renderNodeText(node));
 
     const scale = this.documentData.viewport.scale || 1;
-    if (selected && !this.readonly && SELECTION_BOX_TYPES.has(node.type)) {
+    if (soloSelected && !this.readonly && SELECTION_BOX_TYPES.has(node.type)) {
       const outset = SELECTION_OUTSET / scale;
       group.appendChild(
         svgEl('rect', {
@@ -3757,7 +3924,7 @@ export class VdFlowchart {
       );
     }
 
-    if (selected && !this.readonly && isNodeResizable(node)) {
+    if (soloSelected && !this.readonly && isNodeResizable(node)) {
       group.appendChild(this.renderResizeControls(node));
     }
 
@@ -4031,6 +4198,17 @@ export class VdFlowchart {
       return;
     }
 
+    if (this.hasMultiSelection()) {
+      this.selectionMeta.textContent = `${this.selectedNodeIds.size} nodes selected`;
+      this.selectionFields.appendChild(
+        createElement('p', {
+          className: 'vd-flowchart-selection-empty',
+          text: 'Drag, nudge with Alt+Arrow, copy, duplicate, or delete them together.',
+        }),
+      );
+      return;
+    }
+
     if (this.selection.kind === 'node') {
       const node = this.findNode(this.selection.id);
       if (!node) {
@@ -4165,18 +4343,76 @@ export class VdFlowchart {
       selection && selection.id && selection.kind
         ? { kind: selection.kind, id: selection.id }
         : null;
-    const previousKey = this.selection ? `${this.selection.kind}:${this.selection.id}` : '';
-    const nextKey = next ? `${next.kind}:${next.id}` : '';
+    this.applySelection(next, next?.kind === 'node' ? [next.id] : []);
+  }
 
-    this.selection = next;
-    if (previousKey !== nextKey) {
+  // Single funnel for selection changes: `selection` is the primary item and
+  // `selectedNodeIds` every selected node (the primary one included).
+  applySelection(primary, nodeIds) {
+    const previousKey = this.getSelectionKey();
+    this.selection = primary;
+    this.selectedNodeIds = new Set(nodeIds);
+    if (primary?.kind === 'node') this.selectedNodeIds.add(primary.id);
+    if (previousKey !== this.getSelectionKey()) {
       this.edgeCycleAnchor = null;
       this.render({ scene: true, inspector: true, json: false });
-      this.emit('select', { selection: this.getSelectionSnapshot() });
+      this.emit('select', {
+        selection: this.getSelectionSnapshot(),
+        nodeIds: this.getSelectedNodeIds(),
+      });
       return;
     }
 
     this.render({ scene: true, inspector: false, json: false });
+  }
+
+  getSelectionKey() {
+    const primary = this.selection ? `${this.selection.kind}:${this.selection.id}` : '';
+    return `${primary}|${[...(this.selectedNodeIds || [])].sort().join(',')}`;
+  }
+
+  // Keep the set valid after mutations that bypass applySelection (undo,
+  // load, removal): drop missing nodes and keep the primary node in the set.
+  syncSelectedNodeIds() {
+    if (this.selection?.kind !== 'node') {
+      this.selectedNodeIds = new Set();
+      return;
+    }
+    const existing = new Set(this.documentData.nodes.map((node) => node.id));
+    this.selectedNodeIds = new Set(
+      [...(this.selectedNodeIds || [])].filter((id) => existing.has(id)),
+    );
+    this.selectedNodeIds.add(this.selection.id);
+  }
+
+  getSelectedNodeIds() {
+    return [...(this.selectedNodeIds || [])];
+  }
+
+  isNodeSelected(nodeId) {
+    return Boolean(this.selectedNodeIds?.has(nodeId));
+  }
+
+  hasMultiSelection() {
+    return (this.selectedNodeIds?.size || 0) > 1;
+  }
+
+  /** Select several nodes; `primary` (default: the last id) drives single-node UI. */
+  selectNodes(nodeIds, options = {}) {
+    const existing = new Set(this.documentData.nodes.map((node) => node.id));
+    const ids = [...new Set((nodeIds || []).map(sanitizeId))].filter((id) => existing.has(id));
+    const primaryId = ids.includes(options.primary) ? options.primary : ids[ids.length - 1];
+    this.applySelection(primaryId ? { kind: 'node', id: primaryId } : null, ids);
+    return this;
+  }
+
+  toggleNodeSelection(nodeId) {
+    const ids = this.selection?.kind === 'node' ? this.getSelectedNodeIds() : [];
+    if (ids.includes(nodeId)) {
+      const rest = ids.filter((id) => id !== nodeId);
+      return this.selectNodes(rest, { primary: rest[rest.length - 1] });
+    }
+    return this.selectNodes([...ids, nodeId], { primary: nodeId });
   }
 
   selectNode(nodeId) {
@@ -4893,6 +5129,9 @@ export class VdFlowchart {
 
   deleteSelection() {
     if (!this.selection || this.readonly) return false;
+    if (this.hasMultiSelection()) {
+      return this.removeNodeIds(new Set(this.getSelectedNodeIds()), 'node:remove');
+    }
     if (this.selection.kind === 'node') return this.removeNode(this.selection.id);
     return this.removeEdge(this.selection.id);
   }

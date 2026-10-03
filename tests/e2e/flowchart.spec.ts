@@ -162,6 +162,41 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     await expect(minimap).toBeHidden();
   });
 
+  test('Shift+drag selects both nodes and dragging moves them together', async ({ page }) => {
+    const shapes = page.locator('#flowchart g.vd-flowchart-node .vd-flowchart-node-shape');
+    const first = (await shapes.nth(0).boundingBox())!;
+    const second = (await shapes.nth(1).boundingBox())!;
+    await page.keyboard.down('Shift');
+    await page.mouse.move(first.x - 24, first.y - 24);
+    await page.mouse.down();
+    await page.mouse.move(second.x + second.width + 24, second.y + second.height + 24, {
+      steps: 6,
+    });
+    await page.mouse.up();
+    await page.keyboard.up('Shift');
+    await expect(page.locator('#flowchart .vd-flowchart-node.is-selected')).toHaveCount(2);
+
+    const before = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(first.x + first.width / 2 + 60, first.y + first.height / 2 + 90, {
+      steps: 6,
+    });
+    await page.mouse.up();
+    const after = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    const shift = (doc: typeof before, index: number) => {
+      const nodes = doc.nodes as Array<{ x: number; y: number }>;
+      return nodes[index];
+    };
+    const dx0 = shift(after, 0).x - shift(before, 0).x;
+    const dx1 = shift(after, 1).x - shift(before, 1).x;
+    const dy0 = shift(after, 0).y - shift(before, 0).y;
+    const dy1 = shift(after, 1).y - shift(before, 1).y;
+    expect(dx0).toBeGreaterThan(0);
+    expect(dx1).toBeCloseTo(dx0, 2);
+    expect(dy1).toBeCloseTo(dy0, 2);
+  });
+
   test.afterEach(() => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });

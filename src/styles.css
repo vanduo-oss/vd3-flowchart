@@ -659,6 +659,15 @@
   opacity: 0;
 }
 
+.vd-flowchart-marquee {
+  fill: color-mix(in srgb, var(--vd-flowchart-accent) 10%, transparent);
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .vd-flowchart-guide {
   stroke: var(--vd-flowchart-accent);
   stroke-width: 1;
