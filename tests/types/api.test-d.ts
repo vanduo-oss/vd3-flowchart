@@ -8,8 +8,10 @@ import {
   computeLayout,
   LAYOUT_MODES,
   FLOWCHART_NODE_TYPES,
+  FLOWCHART_KEYBOARD_SHORTCUTS,
   VD_FLOWCHART_VERSION,
   VdFlowchart as VdFlowchartVue,
+  type FlowchartKeyboardShortcuts,
   type FlowchartNode,
   type FlowchartEdge,
   type FlowchartDocument,
@@ -40,6 +42,15 @@ const node: FlowchartNode = editor.addNode({
   relativeTo: { node: 'a', direction: 'right', distance: 200 },
 });
 const child = editor.addChildNode('a', { text: 'child', direction: 'down' });
+const branch = editor.insertBranchNode('a', { direction: 'left', edit: true });
+const sibling = editor.insertSiblingNode('b', { before: true });
+const navigated: boolean = editor.navigateSelection('up');
+editor.zoomTo(1).toggleShortcutsHelp(true);
+editor.startTextEdit('a', { initialText: 'x' });
+editor.updateOptions({ keyboardShortcuts: 'basic' });
+const shortcutModes: readonly FlowchartKeyboardShortcuts[] = FLOWCHART_KEYBOARD_SHORTCUTS;
+// @ts-expect-error — only 'mindmap' and 'basic' are keyboard models.
+editor.updateOptions({ keyboardShortcuts: 'vim' });
 
 editor.layout('radial', { root: 'a', radius: 240 }).autoArrange({ columns: 4 });
 const canUndo: boolean = editor.canUndo();
@@ -68,6 +79,7 @@ const flowchartProps: VdFlowchartProps = {
   readonly: false,
   history: true,
   historyLimit: 20,
+  keyboardShortcuts: 'mindmap',
 };
 // @ts-expect-error — `history` is a boolean flag, not a number.
 const badFlowchartProps: VdFlowchartProps = { history: 5 };
@@ -80,6 +92,10 @@ void removed;
 void edge;
 void node;
 void child;
+void branch;
+void sibling;
+void navigated;
+void shortcutModes;
 void canUndo;
 void canRedo;
 void docVersion;

@@ -11,6 +11,11 @@ export type FlowchartEdgeRoute = 'curve' | 'straight' | 'orthogonal';
 export type FlowchartEdgeKind = 'line' | 'arrow';
 export type FlowchartDirection = 'right' | 'left' | 'up' | 'down';
 export type LayoutMode = 'tree' | 'radial' | 'grid';
+/**
+ * `'mindmap'` (default): Tab adds a child, Enter adds a sibling, F2/Space or
+ * typing edits. `'basic'`: Enter edits and Tab moves focus as usual.
+ */
+export type FlowchartKeyboardShortcuts = 'mindmap' | 'basic';
 
 export interface FlowchartViewport {
   x: number;
@@ -111,6 +116,27 @@ export interface AddChildNodeOptions extends FlowchartNodeInput {
   edge?: FlowchartEdgeInput;
 }
 
+export interface InsertBranchNodeOptions {
+  /** Side of the parent to grow on; defaults to the branch's growth direction. */
+  direction?: FlowchartDirection;
+  /** Sibling to stack next to; defaults to the last sibling on that side. */
+  anchorId?: string;
+  /** Place before `anchorId` instead of after it. */
+  before?: boolean;
+  /** Open the label editor on the new node. */
+  edit?: boolean;
+}
+
+export interface InsertSiblingNodeOptions {
+  before?: boolean;
+  edit?: boolean;
+}
+
+export interface StartTextEditOptions {
+  /** Replace the label with this text and place the caret at the end. */
+  initialText?: string;
+}
+
 export interface LayoutOptions {
   /** Force a specific root node id; defaults to nodes with no incoming edges. */
   root?: string;
@@ -197,6 +223,8 @@ export interface VdFlowchartOptions {
   history?: boolean;
   /** Maximum retained history entries (default 100). */
   historyLimit?: number;
+  /** Keyboard model on the focused canvas (default `'mindmap'`). */
+  keyboardShortcuts?: FlowchartKeyboardShortcuts;
 }
 
 export class VdFlowchart {
@@ -228,6 +256,20 @@ export class VdFlowchart {
     parentId: string,
     options?: AddChildNodeOptions,
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  /** Add a connected node on a side of the parent; node and edge undo as one step. */
+  insertBranchNode(
+    parentId: string,
+    options?: InsertBranchNodeOptions,
+  ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  /** Add a sibling next to a node (a child when the node has no parent). */
+  insertSiblingNode(
+    nodeId: string,
+    options?: InsertSiblingNodeOptions,
+  ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  duplicateSelection(): FlowchartNode | null;
+  nudgeNode(nodeId: string, direction: FlowchartDirection, distance: number): FlowchartNode | null;
+  /** Select the nearest node in a direction (spatial keyboard navigation). */
+  navigateSelection(direction: FlowchartDirection): boolean;
   updateNode(
     nodeId: string,
     patch?: Partial<FlowchartNodeInput>,
@@ -260,6 +302,12 @@ export class VdFlowchart {
   zoomOut(): this;
   resetView(): this;
   fitView(): this;
+  /** Zoom around the view centre to an absolute scale (clamped). */
+  zoomTo(scale: number): this;
+  /** Pan just enough to bring a node into view. */
+  revealNode(nodeId: string): void;
+  /** Open, close, or toggle the keyboard shortcuts overlay. */
+  toggleShortcutsHelp(force?: boolean): this;
 
   // Document
   clear(): this;
@@ -267,7 +315,7 @@ export class VdFlowchart {
   toJSON(): FlowchartDocument;
 
   // Text editing
-  startTextEdit(nodeId: string): boolean;
+  startTextEdit(nodeId: string, options?: StartTextEditOptions): boolean;
   stopTextEdit(options?: { commit?: boolean }): void;
 
   // Lifecycle
@@ -275,7 +323,7 @@ export class VdFlowchart {
   updateOptions(
     options: Pick<
       VdFlowchartOptions,
-      'readonly' | 'gridSize' | 'autoFit' | 'history' | 'historyLimit'
+      'readonly' | 'gridSize' | 'autoFit' | 'history' | 'historyLimit' | 'keyboardShortcuts'
     >,
   ): this;
   destroy(): void;
@@ -297,3 +345,4 @@ export const FLOWCHART_NODE_TYPES: readonly FlowchartNodeType[];
 export const FLOWCHART_PORTS: readonly FlowchartPort[];
 export const FLOWCHART_EDGE_MARKERS: readonly FlowchartEdgeMarker[];
 export const FLOWCHART_EDGE_ROUTES: readonly FlowchartEdgeRoute[];
+export const FLOWCHART_KEYBOARD_SHORTCUTS: readonly FlowchartKeyboardShortcuts[];

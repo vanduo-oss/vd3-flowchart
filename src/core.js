@@ -1,5 +1,13 @@
 /* global queueMicrotask */
 import { computeLayout, LAYOUT_MODES } from './layout.js';
+import {
+  DIRECTION_PORTS,
+  PORT_DIRECTIONS,
+  findNearestNode,
+  findSpatialNeighbor,
+  oppositeDirection,
+  placeBranchNode,
+} from './mindmap.js';
 
 // Re-export the pure layout helper so consumers can compute positions without
 // an editor instance.
@@ -81,14 +89,24 @@ const DEFAULT_EDGE_STROKE_WIDTH = 2.25;
 const MIN_EDGE_STROKE_WIDTH = 1.25;
 const MAX_EDGE_STROKE_WIDTH = 6;
 const CONNECTION_PORT_RADIUS = 6;
+// The handle sits outside the boundary; a hit radius slightly larger than the
+// offset overlaps the node edge so the pointer can slide from node to handle
+// without losing hover.
+const PORT_HANDLE_OFFSET = 12;
 const CONNECTION_PORT_HIT_RADIUS = 14;
+const PORT_CLICK_SLOP = 4;
+const RESIZE_HANDLE_SIZE = 9;
+const SELECTION_OUTSET = 4;
+// Shapes whose outline does not reach the corners of their bounds get a dashed
+// selection box so the corner resize handles have something to sit on.
+const SELECTION_BOX_TYPES = new Set(['circle', 'diamond', 'label']);
 const RECONNECT_ENDPOINT_RADIUS = 7;
 const RECONNECT_ENDPOINT_HIT_RADIUS = 12;
 const EDGE_HIT_STROKE_MIN = 16;
 const CONNECTION_SNAP_PADDING = 36;
 const CONNECTION_HYSTERESIS = 16;
 const CONNECTION_CENTER_LOCK_RADIUS = 18;
-const RESIZE_PORT_GAP = 34;
+const RESIZE_PORT_GAP = 28;
 
 const EDGE_STROKE_PRESETS = [
   { id: 'thin', label: 'Thin', width: 1.75 },
@@ -96,7 +114,7 @@ const EDGE_STROKE_PRESETS = [
   { id: 'bold', label: 'Bold', width: 3.5 },
 ];
 
-export const VD_FLOWCHART_VERSION = '1.3.0';
+export const VD_FLOWCHART_VERSION = '1.4.0';
 /** Serialized schema version; change only when the document format changes. */
 export const FLOWCHART_DOCUMENT_VERSION = '1.2.0';
 export const FLOWCHART_NODE_TYPES = [
@@ -111,11 +129,65 @@ export const FLOWCHART_NODE_TYPES = [
 export const FLOWCHART_PORTS = ['top', 'right', 'bottom', 'left'];
 export const FLOWCHART_EDGE_MARKERS = ['none', 'arrow', 'dot'];
 export const FLOWCHART_EDGE_ROUTES = ['curve', 'straight', 'orthogonal'];
+export const FLOWCHART_KEYBOARD_SHORTCUTS = ['mindmap', 'basic'];
+
+function normalizeKeyboardShortcuts(value) {
+  return value === 'basic' ? 'basic' : 'mindmap';
+}
+
+const ARROW_DIRECTIONS = {
+  ArrowRight: 'right',
+  ArrowLeft: 'left',
+  ArrowDown: 'down',
+  ArrowUp: 'up',
+};
+
+function getShortcutRows(mode, readonly) {
+  const navigation = [['Arrow keys', 'Select the nearest node in that direction']];
+  const view = [
+    ['Cmd/Ctrl + = or -', 'Zoom in or out'],
+    ['Cmd/Ctrl + 0', 'Zoom to 100%'],
+    ['Shift + 1', 'Fit the diagram to the view'],
+  ];
+  const help = [['?', 'Show or hide this list']];
+  if (readonly) {
+    return [...navigation, ...view, ...help, ['Tab', 'Leave the canvas']];
+  }
+  const mindmap =
+    mode === 'mindmap'
+      ? [
+          ['Tab', 'Add a child node'],
+          ['Enter', 'Add a sibling below (Shift + Enter: above)'],
+          ['F2, Space, or type', 'Edit the label'],
+          ['Enter while editing', 'Save the label (Shift + Enter: new line)'],
+          ['Tab while editing', 'Save and add a child'],
+        ]
+      : [
+          ['Enter or F2', 'Edit the label'],
+          ['Cmd/Ctrl + Enter', 'Save the label'],
+        ];
+  return [
+    ...navigation,
+    ...mindmap,
+    ['Alt + Arrow', 'Nudge the node (add Shift for 1 px)'],
+    ['Delete or Backspace', 'Delete the selection'],
+    ['Cmd/Ctrl + D', 'Duplicate the node'],
+    ['Cmd/Ctrl + Z, Shift + Cmd/Ctrl + Z', 'Undo, redo'],
+    ['Cmd/Ctrl + C, X, V', 'Copy, cut, paste'],
+    ...view,
+    ['Esc', 'Cancel editing, then the tool, then deselect'],
+    [
+      mode === 'mindmap' ? 'Shift + Tab, or Esc then Tab' : 'Tab or Shift + Tab',
+      'Leave the canvas',
+    ],
+    ...help,
+  ];
+}
 
 // History entries for these reasons collapse into the previous entry when they
 // target the same node/edge, so a burst of inspector keystrokes (one
 // `node:update` each) is a single undo step. Discrete gestures are excluded.
-const COALESCING_REASONS = new Set(['node:update', 'edge:update']);
+const COALESCING_REASONS = new Set(['node:update', 'edge:update', 'node:nudge']);
 
 const DEFAULT_EDGE_ROUTE = 'curve';
 const ORTHOGONAL_STUB_LENGTH = 32;
@@ -528,6 +600,16 @@ function getPortPosition(node, port) {
     default:
       return { x: node.x, y: node.y + node.height / 2 };
   }
+}
+
+function getPortHandlePosition(node, port, scale = 1) {
+  const point = getPortPosition(node, port);
+  const normal = getPortNormal(port);
+  const offset = PORT_HANDLE_OFFSET / scale;
+  return {
+    x: formatNumber(point.x + normal.x * offset),
+    y: formatNumber(point.y + normal.y * offset),
+  };
 }
 
 function getNearestPort(node, point) {
@@ -1203,6 +1285,11 @@ export class VdFlowchart {
     this.history = [];
     this.historyIndex = -1;
     this.isApplyingHistory = false;
+    this.historyBatchDepth = 0;
+    this.historyBatchDirty = false;
+    this.coalesceInsertedText = false;
+    this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
+    this.shortcutsHelpOpen = false;
     this.autoFit = Boolean(options.autoFit);
     this.readyEmitted = false;
     this.resizeObserver = null;
@@ -1334,8 +1421,19 @@ export class VdFlowchart {
       text: '100%',
     });
 
+    this.shortcutsButton = createElement('button', {
+      className: 'vd-flowchart-btn vd-flowchart-icon-btn vd-flowchart-shortcuts-btn',
+      title: 'Keyboard shortcuts (?)',
+      text: '?',
+    });
+    this.shortcutsButton.setAttribute('type', 'button');
+    this.shortcutsButton.setAttribute('data-flowchart-action', 'shortcuts');
+    this.shortcutsButton.setAttribute('aria-label', 'Keyboard shortcuts');
+    this.shortcutsButton.setAttribute('aria-expanded', 'false');
+
     toolbarLeft.appendChild(this.arrangeSelect);
     toolbarLeft.appendChild(this.clearButton);
+    toolbarRight.appendChild(this.shortcutsButton);
     toolbarRight.appendChild(this.zoomLabel);
     this.toolbar.appendChild(toolbarLeft);
     this.toolbar.appendChild(toolbarRight);
@@ -1429,6 +1527,16 @@ export class VdFlowchart {
     this.world.appendChild(this.overlayLayer);
     this.svg.appendChild(this.world);
     this.canvasEl.appendChild(this.svg);
+
+    this.shortcutsHelp = createElement('div', { className: 'vd-flowchart-shortcuts' });
+    this.shortcutsHelp.id = nextId('flowchart-shortcuts');
+    this.shortcutsHelp.setAttribute('role', 'dialog');
+    this.shortcutsHelp.setAttribute('aria-label', 'Keyboard shortcuts');
+    this.shortcutsHelp.hidden = true;
+    this.shortcutsHelp.addEventListener('pointerdown', (event) => event.stopPropagation());
+    this.shortcutsHelp.addEventListener('wheel', (event) => event.stopPropagation());
+    this.shortcutsButton.setAttribute('aria-controls', this.shortcutsHelp.id);
+    this.canvasEl.appendChild(this.shortcutsHelp);
 
     this.inspectorPanel = createElement('aside', {
       className: 'vd-flowchart-panel vd-flowchart-panel--inspector',
@@ -1539,11 +1647,19 @@ export class VdFlowchart {
     this.graphOutline.appendChild(this.graphList);
     this.root.appendChild(this.graphOutline);
     this.canvasEl.setAttribute('role', 'group');
+    this.syncCanvasLabel();
+    this.jsonTextarea.setAttribute('aria-label', 'Flowchart JSON');
+  }
+
+  syncCanvasLabel() {
+    const keys =
+      this.readonly || this.keyboardShortcuts === 'basic'
+        ? 'Arrow keys select nodes; Enter or F2 edits a label.'
+        : 'Arrow keys select nodes; Tab adds a child, Enter adds a sibling, F2 edits a label.';
     this.canvasEl.setAttribute(
       'aria-label',
-      'Diagram canvas. Arrow keys select nodes; Enter edits a label. Graph outline provides connections.',
+      `Diagram canvas. ${keys} Press ? for all shortcuts. Graph outline provides connections.`,
     );
-    this.jsonTextarea.setAttribute('aria-label', 'Flowchart JSON');
   }
 
   renderGraphOutline() {
@@ -1684,6 +1800,41 @@ export class VdFlowchart {
     if (action === 'undo') this.undo();
     if (action === 'redo') this.redo();
     if (action === 'clear' && !this.readonly) this.clear();
+    if (action === 'shortcuts') this.toggleShortcutsHelp();
+  }
+
+  toggleShortcutsHelp(force) {
+    const open = typeof force === 'boolean' ? force : !this.shortcutsHelpOpen;
+    this.shortcutsHelpOpen = open;
+    this.shortcutsButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) this.renderShortcutsHelp();
+    this.shortcutsHelp.hidden = !open;
+    if (!open && this.shortcutsHelp.contains(document.activeElement)) this.canvasEl.focus();
+    return this;
+  }
+
+  renderShortcutsHelp() {
+    clearChildren(this.shortcutsHelp);
+    const header = createElement('div', { className: 'vd-flowchart-shortcuts-header' });
+    header.appendChild(
+      createElement('h4', { className: 'vd-flowchart-panel-title', text: 'Keyboard shortcuts' }),
+    );
+    const close = createElement('button', {
+      className: 'vd-flowchart-btn vd-flowchart-icon-btn',
+      text: '×',
+    });
+    close.setAttribute('type', 'button');
+    close.setAttribute('aria-label', 'Close keyboard shortcuts');
+    close.addEventListener('click', () => this.toggleShortcutsHelp(false));
+    header.appendChild(close);
+    this.shortcutsHelp.appendChild(header);
+
+    const list = createElement('dl', { className: 'vd-flowchart-shortcuts-list' });
+    getShortcutRows(this.keyboardShortcuts, this.readonly).forEach(([keys, action]) => {
+      list.appendChild(createElement('dt', { text: keys }));
+      list.appendChild(createElement('dd', { text: action }));
+    });
+    this.shortcutsHelp.appendChild(list);
   }
 
   handleArrangeChange(event) {
@@ -1812,45 +1963,52 @@ export class VdFlowchart {
   }
 
   handleKeyDown(event) {
+    const target = event.target;
     if (
-      event.target &&
-      (event.target.tagName === 'INPUT' ||
-        event.target.tagName === 'TEXTAREA' ||
-        event.target.tagName === 'SELECT')
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
     ) {
       return;
     }
+    if (event.isComposing) return;
 
-    if (event.target === this.canvasEl) {
-      const nodes = this.documentData.nodes;
-      const index = nodes.findIndex((node) => node.id === this.selection?.id);
-      let next = -1;
-      if (event.key === 'ArrowDown' || event.key === 'ArrowRight')
-        next = (index + 1) % nodes.length;
-      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft')
-        next = index < 0 ? nodes.length - 1 : (index - 1 + nodes.length) % nodes.length;
-      if (event.key === 'Home') next = 0;
-      if (event.key === 'End') next = nodes.length - 1;
-      if (nodes[next]) {
-        event.preventDefault();
-        this.selectNode(nodes[next].id);
-        return;
-      }
-      if (event.key === 'Enter' && !this.readonly && this.selection?.kind === 'node') {
-        event.preventDefault();
-        this.startTextEdit(this.selection.id);
-        return;
-      }
-    }
-    if (this.readonly) return;
+    const key = event.key;
+    const modKey = event.metaKey || event.ctrlKey;
 
-    if (event.key === 'Escape' && this.activeTool) {
+    if (key === 'Escape' && this.shortcutsHelpOpen) {
       event.preventDefault();
-      this.setActiveTool(null);
+      this.toggleShortcutsHelp(false);
       return;
     }
 
-    const modKey = event.metaKey || event.ctrlKey;
+    if (target === this.canvasEl && this.handleCanvasKeyDown(event)) {
+      event.preventDefault();
+      return;
+    }
+    if (this.readonly) return;
+
+    if (key === 'Escape') {
+      // Step back one level: tool, then edge reconnect mode, then selection.
+      if (this.activeTool) this.setActiveTool(null);
+      else if (this.reconnectEdgeId) {
+        this.reconnectEdgeId = null;
+        this.render({ inspector: false, json: false });
+      } else if (this.selection) this.select(null);
+      else return;
+      event.preventDefault();
+      return;
+    }
+
+    if (modKey && (key === 'd' || key === 'D')) {
+      if (this.selection?.kind === 'node') {
+        event.preventDefault();
+        this.duplicateSelection();
+      }
+      return;
+    }
     if (modKey && (event.key === 'z' || event.key === 'Z')) {
       event.preventDefault();
       if (event.shiftKey) {
@@ -1890,8 +2048,145 @@ export class VdFlowchart {
     if (!this.selection) return;
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
+      if (this.selection.kind === 'node') {
+        const removedId = this.selection.id;
+        const parent = this.getParentNode(removedId);
+        const sibling = parent
+          ? this.getChildNodes(parent.id).find((node) => node.id !== removedId)
+          : null;
+        if (this.deleteSelection()) {
+          const next = (parent && this.findNode(parent.id)) || sibling;
+          if (next) this.select({ kind: 'node', id: next.id });
+        }
+        return;
+      }
       this.deleteSelection();
     }
+  }
+
+  // Keys that only apply while the canvas itself has focus. Returns true when
+  // the key was handled (the caller prevents the default action).
+  handleCanvasKeyDown(event) {
+    const key = event.key;
+    const modKey = event.metaKey || event.ctrlKey;
+    const mindmap = this.keyboardShortcuts === 'mindmap';
+    const selectedNode = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
+    const editable = !this.readonly && Boolean(selectedNode);
+
+    if (key === '?' && !modKey && !event.altKey) {
+      this.toggleShortcutsHelp();
+      return true;
+    }
+
+    if (modKey && !event.altKey) {
+      if (key === '=' || key === '+') return Boolean(this.zoomIn());
+      if (key === '-' || key === '_') return Boolean(this.zoomOut());
+      if (key === '0') return Boolean(this.zoomTo(1));
+      return false;
+    }
+    if (event.shiftKey && !event.altKey && (key === '!' || event.code === 'Digit1')) {
+      return Boolean(this.fitView());
+    }
+
+    const direction = ARROW_DIRECTIONS[key];
+    if (direction) {
+      if (event.altKey) {
+        if (editable) {
+          this.nudgeNode(selectedNode.id, direction, event.shiftKey ? 1 : this.gridSize);
+        }
+        return true;
+      }
+      if (event.shiftKey) return false;
+      this.navigateSelection(direction);
+      return true;
+    }
+
+    const nodes = this.documentData.nodes;
+    if ((key === 'Home' || key === 'End') && nodes.length) {
+      this.selectNode(nodes[key === 'Home' ? 0 : nodes.length - 1].id);
+      return true;
+    }
+
+    if (!editable || event.altKey) return false;
+
+    if (key === 'F2' || (key === 'Enter' && !mindmap) || (key === ' ' && mindmap)) {
+      this.startTextEdit(selectedNode.id);
+      return true;
+    }
+    if (!mindmap) return false;
+
+    if (key === 'Tab' && !event.shiftKey) {
+      this.insertBranchNode(selectedNode.id, { edit: true });
+      return true;
+    }
+    if (key === 'Enter') {
+      this.insertSiblingNode(selectedNode.id, { before: event.shiftKey, edit: true });
+      return true;
+    }
+    if (key.length === 1 && key !== ' ' && isNodeTextEditable(selectedNode)) {
+      this.startTextEdit(selectedNode.id, { initialText: key });
+      return true;
+    }
+    return false;
+  }
+
+  // Move the selection to the nearest node in `direction`; with nothing (or an
+  // edge) selected, start from the node closest to the centre of the view.
+  navigateSelection(direction) {
+    const nodes = this.documentData.nodes;
+    if (!nodes.length) return false;
+    const current = this.selection?.kind === 'node' ? this.findNode(this.selection.id) : null;
+    const next = current
+      ? findSpatialNeighbor(nodes, current, direction)
+      : findNearestNode(nodes, this.getViewportCenter());
+    if (!next) return false;
+    this.selectNode(next.id);
+    this.revealNode(next.id);
+    return true;
+  }
+
+  nudgeNode(nodeId, direction, distance) {
+    const node = this.findNode(nodeId);
+    if (!node || this.readonly) return null;
+    const step = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] }[direction];
+    if (!step) return null;
+    node.x = formatNumber(node.x + step[0] * distance);
+    node.y = formatNumber(node.y + step[1] * distance);
+    this.render({ inspector: true, json: true });
+    this.emitChange('node:nudge', { node: deepClone(node) });
+    return deepClone(node);
+  }
+
+  zoomTo(scale) {
+    const viewport = this.documentData.viewport;
+    const width = this.canvasEl.clientWidth || 800;
+    const height = this.canvasEl.clientHeight || 560;
+    this.scaleAround(
+      clamp(scale, MIN_SCALE, MAX_SCALE) / viewport.scale,
+      width / 2,
+      height / 2,
+      'viewport:zoom',
+    );
+    return this;
+  }
+
+  duplicateSelection() {
+    if (this.readonly || this.selection?.kind !== 'node') return null;
+    const node = this.findNode(this.selection.id);
+    return node ? this.pasteNodeData(node) : null;
+  }
+
+  pasteNodeData(data) {
+    const usedIds = new Set(this.documentData.nodes.map((node) => node.id));
+    const node = normalizeNode(
+      { ...data, id: undefined, x: data.x + 24, y: data.y + 24 },
+      this.documentData.nodes.length,
+      usedIds,
+    );
+    this.documentData.nodes.push(node);
+    this.select({ kind: 'node', id: node.id });
+    this.emitChange('node:add', { node: deepClone(node) });
+    return deepClone(node);
   }
 
   copySelection() {
@@ -1912,20 +2207,7 @@ export class VdFlowchart {
     if (!this.clipboard || this.readonly) return false;
 
     if (this.clipboard.kind === 'node') {
-      const usedIds = new Set(this.documentData.nodes.map((node) => node.id));
-      const node = normalizeNode(
-        {
-          ...this.clipboard.data,
-          id: undefined,
-          x: this.clipboard.data.x + 24,
-          y: this.clipboard.data.y + 24,
-        },
-        this.documentData.nodes.length,
-        usedIds,
-      );
-      this.documentData.nodes.push(node);
-      this.select({ kind: 'node', id: node.id });
-      this.emitChange('node:add', { node: deepClone(node) });
+      this.pasteNodeData(this.clipboard.data);
       return true;
     }
 
@@ -2070,6 +2352,9 @@ export class VdFlowchart {
       this.interaction = {
         kind: 'connect',
         pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        moved: false,
         source: { nodeId, port },
         target: null,
         previousSnap: null,
@@ -2216,6 +2501,14 @@ export class VdFlowchart {
     }
 
     if (this.interaction.kind === 'connect') {
+      if (!this.interaction.moved) {
+        const travel = Math.hypot(
+          event.clientX - this.interaction.startClientX,
+          event.clientY - this.interaction.startClientY,
+        );
+        if (!(travel > PORT_CLICK_SLOP)) return;
+        this.interaction.moved = true;
+      }
       const world = this.clientToWorld(event.clientX, event.clientY);
       const snapTarget = this.findConnectionTarget(
         world,
@@ -2337,6 +2630,14 @@ export class VdFlowchart {
     }
 
     if (interaction.kind === 'connect') {
+      if (!interaction.moved && this.activeTool !== 'arrow') {
+        this.render({ inspector: false, json: false });
+        this.insertBranchNode(interaction.source.nodeId, {
+          direction: PORT_DIRECTIONS[interaction.source.port],
+          edit: true,
+        });
+        return;
+      }
       const world = this.clientToWorld(event.clientX || 0, event.clientY || 0);
       const snapTarget = interaction.target
         ? { node: this.findNode(interaction.target.nodeId), port: interaction.target.port }
@@ -2589,7 +2890,10 @@ export class VdFlowchart {
     this.zoomLabel.textContent = `${Math.round(this.documentData.viewport.scale * 100)}%`;
   }
 
-  startTextEdit(nodeId) {
+  // Options: `initialText` replaces the label with typed text (type-to-edit);
+  // `inserted` marks a node created by a keyboard/handle insertion so naming it
+  // shares the insertion's undo step.
+  startTextEdit(nodeId, options = {}) {
     if (this.readonly) return false;
     const node = this.findNode(nodeId);
     if (!node || !isNodeTextEditable(node)) return false;
@@ -2604,9 +2908,10 @@ export class VdFlowchart {
     this.stopTextEdit({ commit: true });
     this.select({ kind: 'node', id: node.id });
 
+    const replacing = typeof options.initialText === 'string';
     const textarea = createElement('textarea', {
       className: `vd-flowchart-text-editor vd-flowchart-text-editor--${node.type}`,
-      value: node.text,
+      value: replacing ? options.initialText : node.text,
       rows: 1,
     });
     textarea.setAttribute('data-node-id', node.id);
@@ -2616,19 +2921,7 @@ export class VdFlowchart {
     textarea.addEventListener('input', () => this.positionTextEditor());
     textarea.addEventListener('pointerdown', (event) => event.stopPropagation());
     textarea.addEventListener('dblclick', (event) => event.stopPropagation());
-    textarea.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        this.stopTextEdit({ commit: false });
-        this.canvasEl.focus();
-        return;
-      }
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        this.stopTextEdit({ commit: true });
-        this.canvasEl.focus();
-      }
-    });
+    textarea.addEventListener('keydown', (event) => this.handleTextEditorKeyDown(event, node));
     textarea.addEventListener('blur', () => {
       if (this.textEditor?.textarea === textarea) {
         this.stopTextEdit({ commit: true });
@@ -2638,19 +2931,53 @@ export class VdFlowchart {
     this.textEditor = {
       nodeId: node.id,
       previousText: node.text,
+      inserted: Boolean(options.inserted),
       textarea,
     };
     this.canvasEl.appendChild(textarea);
     this.render({ inspector: true, json: false });
 
-    window.requestAnimationFrame(() => {
-      if (this.textEditor?.textarea === textarea) {
-        textarea.focus();
+    const focusEditor = () => {
+      if (this.textEditor?.textarea !== textarea) return;
+      textarea.focus();
+      if (replacing) {
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      } else {
         textarea.select();
       }
-    });
+    };
+    // Typed characters must land in the editor, so focus it synchronously;
+    // the frame callback re-applies focus after the browser settles layout.
+    focusEditor();
+    window.requestAnimationFrame(focusEditor);
 
     return true;
+  }
+
+  handleTextEditorKeyDown(event, node) {
+    if (event.isComposing) return;
+    const mindmap = this.keyboardShortcuts === 'mindmap';
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.stopTextEdit({ commit: false });
+      this.canvasEl.focus();
+      return;
+    }
+    if (event.key === 'Enter') {
+      const modKey = event.ctrlKey || event.metaKey;
+      const commits = modKey || (mindmap && node.type !== 'textbox' && !event.shiftKey);
+      if (!commits) return;
+      event.preventDefault();
+      this.stopTextEdit({ commit: true });
+      this.canvasEl.focus();
+      return;
+    }
+    if (event.key === 'Tab' && mindmap && !event.shiftKey && !event.altKey && !event.ctrlKey) {
+      event.preventDefault();
+      this.stopTextEdit({ commit: true });
+      this.canvasEl.focus();
+      this.insertBranchNode(node.id, { edit: true });
+    }
   }
 
   stopTextEdit(options = {}) {
@@ -2662,11 +2989,16 @@ export class VdFlowchart {
     editor.textarea.remove();
 
     if (commit && !this.readonly && nextText !== editor.previousText) {
-      this.updateNode(
-        editor.nodeId,
-        { text: nextText },
-        { inspector: true, reason: 'node:update' },
-      );
+      this.coalesceInsertedText = editor.inserted;
+      try {
+        this.updateNode(
+          editor.nodeId,
+          { text: nextText },
+          { inspector: true, reason: 'node:update' },
+        );
+      } finally {
+        this.coalesceInsertedText = false;
+      }
     } else {
       this.render({ scene: true, inspector: false, json: false });
     }
@@ -2948,13 +3280,28 @@ export class VdFlowchart {
     group.appendChild(this.renderNodeShape(node));
     group.appendChild(this.renderNodeText(node));
 
+    const scale = this.documentData.viewport.scale || 1;
+    if (selected && !this.readonly && SELECTION_BOX_TYPES.has(node.type)) {
+      const outset = SELECTION_OUTSET / scale;
+      group.appendChild(
+        svgEl('rect', {
+          class: 'vd-flowchart-selection-box',
+          x: -outset,
+          y: -outset,
+          width: node.width + outset * 2,
+          height: node.height + outset * 2,
+        }),
+      );
+    }
+
     if (selected && !this.readonly && isNodeResizable(node)) {
       group.appendChild(this.renderResizeControls(node));
     }
 
-    const scale = this.documentData.viewport.scale || 1;
+    if (this.readonly) return group;
+
     FLOWCHART_PORTS.forEach((port) => {
-      const position = getPortPosition({ ...node, x: 0, y: 0 }, port);
+      const position = getPortHandlePosition({ ...node, x: 0, y: 0 }, port, scale);
       const portGroup = svgEl('g', {
         class: `vd-flowchart-port-group${portsVisible ? ' is-visible' : ''}`,
         'data-node-id': node.id,
@@ -2976,6 +3323,13 @@ export class VdFlowchart {
           r: CONNECTION_PORT_RADIUS / scale,
         }),
       );
+      const arm = (CONNECTION_PORT_RADIUS - 2.5) / scale;
+      portGroup.appendChild(
+        svgEl('path', {
+          class: 'vd-flowchart-port-plus',
+          d: `M ${formatNumber(position.x - arm)} ${formatNumber(position.y)} H ${formatNumber(position.x + arm)} M ${formatNumber(position.x)} ${formatNumber(position.y - arm)} V ${formatNumber(position.y + arm)}`,
+        }),
+      );
       group.appendChild(portGroup);
     });
 
@@ -2986,7 +3340,7 @@ export class VdFlowchart {
     const scale = this.documentData.viewport.scale || 1;
     const zone = 14 / scale;
     const cornerZone = 22 / scale;
-    const handleSize = 9 / scale;
+    const handleSize = RESIZE_HANDLE_SIZE / scale;
     const gap = RESIZE_PORT_GAP / scale;
     const group = svgEl('g', { class: 'vd-flowchart-resize-controls' });
 
@@ -3018,12 +3372,6 @@ export class VdFlowchart {
 
     RESIZE_HANDLES.forEach((handle) => {
       const zoneRect = zones[handle];
-      const position = getResizeHandlePosition(node, handle);
-      const dotOffset = 8 / scale;
-      if (handle.includes('e')) position.x += dotOffset;
-      if (handle.includes('w')) position.x -= dotOffset;
-      if (handle.includes('n')) position.y -= dotOffset;
-      if (handle.includes('s')) position.y += dotOffset;
       const cursor = getResizeCursor(handle);
       const zoneSegments = [];
       if (handle === 'e' || handle === 'w') {
@@ -3060,14 +3408,21 @@ export class VdFlowchart {
           });
           group.appendChild(hit);
         });
+      // Sides resize through the invisible strips only; a visible dot there
+      // would sit on the same axis as the connection handle.
+      if (handle.length === 1) return;
+      const position = getResizeHandlePosition(node, handle);
+      const outset = SELECTION_OUTSET / scale;
+      position.x += handle.includes('e') ? outset : -outset;
+      position.y += handle.includes('s') ? outset : -outset;
       const dot = svgEl('rect', {
         class: 'vd-flowchart-resize-handle',
         x: position.x - handleSize / 2,
         y: position.y - handleSize / 2,
         width: handleSize,
         height: handleSize,
-        rx: handleSize / 3,
-        ry: handleSize / 3,
+        rx: handleSize / 5,
+        ry: handleSize / 5,
         'data-node-id': node.id,
         'data-resize-handle': handle,
         style: `cursor: ${cursor}`,
@@ -3400,7 +3755,8 @@ export class VdFlowchart {
 
   emitChange(reason, extra = {}) {
     if (this.historyEnabled && !this.isApplyingHistory) {
-      this.recordHistory(reason);
+      if (this.historyBatchDepth > 0) this.historyBatchDirty = true;
+      else this.recordHistory(reason);
     }
     this.syncJsonTextarea();
     this.emit('change', {
@@ -3449,12 +3805,14 @@ export class VdFlowchart {
     const snapshot = this.toJSON();
     const targetKey = this.selection ? `${this.selection.kind}:${this.selection.id}` : '';
     const top = this.history[this.historyIndex];
+    const atTip = Boolean(top) && this.historyIndex === this.history.length - 1;
+    // Naming a node right after inserting it is part of the same gesture.
+    const namesInsertedNode =
+      this.coalesceInsertedText && top?.reason === 'node:insert' && reason === 'node:update';
     const canCoalesce =
-      Boolean(top) &&
-      this.historyIndex === this.history.length - 1 &&
-      COALESCING_REASONS.has(reason) &&
-      top.reason === reason &&
-      top.targetKey === targetKey;
+      atTip &&
+      top.targetKey === targetKey &&
+      (namesInsertedNode || (COALESCING_REASONS.has(reason) && top.reason === reason));
 
     if (canCoalesce) {
       top.snapshot = snapshot;
@@ -3594,21 +3952,189 @@ export class VdFlowchart {
     if (!parent) return null;
 
     const { direction = 'right', distance, angle, edge: edgeOptions, ...nodeOptions } = options;
-    const node = this.addNode({
-      ...nodeOptions,
-      relativeTo: { node: parent.id, direction, distance, angle },
+    return this.batchHistory('node:add-child', () => {
+      const node = this.addNode({
+        ...nodeOptions,
+        relativeTo: { node: parent.id, direction, distance, angle },
+      });
+
+      const edge = this.addEdge({
+        from: parent.id,
+        to: node.id,
+        autoPort: true,
+        endMarker: 'arrow',
+        ...(isPlainObject(edgeOptions) ? edgeOptions : {}),
+      });
+
+      this.select({ kind: 'node', id: node.id });
+      return { node, edge };
+    });
+  }
+
+  // Run `fn` with history recording suspended, then record a single entry for
+  // everything it changed (change events still fire for each mutation).
+  batchHistory(reason, fn) {
+    this.historyBatchDepth += 1;
+    let result;
+    try {
+      result = fn();
+    } finally {
+      this.historyBatchDepth -= 1;
+    }
+    if (this.historyBatchDepth === 0 && this.historyBatchDirty) {
+      this.historyBatchDirty = false;
+      if (this.historyEnabled && !this.isApplyingHistory) this.recordHistory(reason);
+    }
+    return result;
+  }
+
+  // Mind-map structure: a node's parent is the source of its first incoming
+  // edge; its children are the targets of its outgoing edges. The side a
+  // branch is on is the port its edge leaves the parent from, which is what
+  // the user sees (centre geometry is ambiguous for diagonal nodes).
+  getParentEdge(nodeId) {
+    return (
+      this.documentData.edges.find(
+        (edge) => edge.to.nodeId === nodeId && edge.from.nodeId !== nodeId,
+      ) || null
+    );
+  }
+
+  getParentNode(nodeId) {
+    const edge = this.getParentEdge(nodeId);
+    return edge ? this.findNode(edge.from.nodeId) : null;
+  }
+
+  getChildNodes(nodeId, direction = null) {
+    const port = direction ? DIRECTION_PORTS[direction] : null;
+    const ids = new Set();
+    this.documentData.edges.forEach((edge) => {
+      if (edge.from.nodeId !== nodeId || edge.to.nodeId === nodeId) return;
+      if (!port || edge.from.port === port) ids.add(edge.to.nodeId);
+    });
+    return this.documentData.nodes.filter((node) => ids.has(node.id));
+  }
+
+  // Direction a branch grows from `node`: the side its parent edge leaves
+  // from, or the emptier horizontal side for a root.
+  getGrowthDirection(node) {
+    const parentEdge = this.getParentEdge(node.id);
+    if (parentEdge) return PORT_DIRECTIONS[parentEdge.from.port] || 'right';
+    const right = this.getChildNodes(node.id, 'right').length;
+    const left = this.getChildNodes(node.id, 'left').length;
+    return left < right ? 'left' : 'right';
+  }
+
+  // Shape for a new branch node: copy a sibling when there is one, otherwise
+  // the parent's box shape, falling back to a rounded step.
+  getBranchTemplate(parent, sibling) {
+    const source =
+      sibling ||
+      (['rounded-rect', 'rect', 'textbox'].includes(parent.type) ? parent : null) ||
+      null;
+    if (source) return { type: source.type, width: source.width, height: source.height };
+    const spec = DEFAULT_NODE_SPECS['rounded-rect'];
+    return { type: 'rounded-rect', width: spec.width, height: spec.height };
+  }
+
+  /**
+   * Add a node connected from `parentId` on the `direction` side (default: the
+   * branch's growth direction), stacked after `anchorId` or the last sibling on
+   * that side. The node and its edge are one undo step; the new edge copies a
+   * sibling's (or the parent's incoming) edge style. With `edit: true` the
+   * label editor opens with the text selected.
+   */
+  insertBranchNode(parentId, options = {}) {
+    if (this.readonly) return null;
+    const parent = this.findNode(sanitizeId(parentId));
+    if (!parent) return null;
+
+    const direction = DIRECTION_PORTS[options.direction]
+      ? options.direction
+      : this.getGrowthDirection(parent);
+    const siblings = this.getChildNodes(parent.id, direction);
+    const anchor = options.anchorId ? this.findNode(sanitizeId(options.anchorId)) : null;
+    const lastSibling = siblings[siblings.length - 1] || null;
+    const template = this.getBranchTemplate(parent, anchor || lastSibling);
+    const position = placeBranchNode({
+      nodes: this.documentData.nodes,
+      parent,
+      siblings,
+      direction,
+      size: template,
+      anchor,
+      before: Boolean(options.before),
     });
 
-    const edge = this.addEdge({
-      from: parent.id,
-      to: node.id,
-      autoPort: true,
-      endMarker: 'arrow',
-      ...(isPlainObject(edgeOptions) ? edgeOptions : {}),
+    const styleSource =
+      this.documentData.edges.find(
+        (edge) => edge.from.nodeId === parent.id && edge.to.nodeId === (anchor || lastSibling)?.id,
+      ) || this.documentData.edges.find((edge) => edge.to.nodeId === parent.id);
+    const edgeStyle = styleSource
+      ? {
+          route: styleSource.route,
+          strokeWidth: styleSource.strokeWidth,
+          startMarker: styleSource.startMarker,
+          endMarker: styleSource.endMarker,
+        }
+      : { endMarker: 'arrow' };
+
+    const result = this.batchHistory('node:insert', () => {
+      const node = this.addNode({ ...template, x: position.x, y: position.y });
+      const edge = this.addEdge({
+        from: { nodeId: parent.id, port: DIRECTION_PORTS[direction] },
+        to: { nodeId: node.id, port: DIRECTION_PORTS[oppositeDirection(direction)] },
+        ...edgeStyle,
+      });
+      this.select({ kind: 'node', id: node.id });
+      return { node, edge };
     });
 
-    this.select({ kind: 'node', id: node.id });
-    return { node, edge };
+    this.revealNode(result.node.id);
+    if (options.edit) this.startTextEdit(result.node.id, { inserted: true });
+    return result;
+  }
+
+  // Insert a sibling after (or before) `nodeId`; a node without a parent gets a
+  // child instead, which is what Enter on a mind-map root means.
+  insertSiblingNode(nodeId, options = {}) {
+    if (this.readonly) return null;
+    const node = this.findNode(sanitizeId(nodeId));
+    if (!node) return null;
+    const parentEdge = this.getParentEdge(node.id);
+    const parent = parentEdge ? this.findNode(parentEdge.from.nodeId) : null;
+    if (!parent) return this.insertBranchNode(node.id, { edit: options.edit });
+    return this.insertBranchNode(parent.id, {
+      direction: PORT_DIRECTIONS[parentEdge.from.port],
+      anchorId: node.id,
+      before: Boolean(options.before),
+      edit: options.edit,
+    });
+  }
+
+  // Pan just enough to bring a node fully into view (with a small margin).
+  revealNode(nodeId) {
+    const node = this.findNode(nodeId);
+    const width = this.canvasEl.clientWidth;
+    const height = this.canvasEl.clientHeight;
+    if (!node || !width || !height) return;
+    const viewport = this.documentData.viewport;
+    const margin = 32;
+    const left = viewport.x + node.x * viewport.scale;
+    const top = viewport.y + node.y * viewport.scale;
+    const right = left + node.width * viewport.scale;
+    const bottom = top + node.height * viewport.scale;
+    let dx = 0;
+    let dy = 0;
+    if (right > width - margin) dx = width - margin - right;
+    if (left + dx < margin) dx = margin - left;
+    if (bottom > height - margin) dy = height - margin - bottom;
+    if (top + dy < margin) dy = margin - top;
+    if (!dx && !dy) return;
+    viewport.x = formatNumber(viewport.x + dx);
+    viewport.y = formatNumber(viewport.y + dy);
+    this.render({ inspector: false, json: true });
+    this.emitViewportChange('viewport:pan');
   }
 
   // Arrange nodes with a built-in layout. Positions are computed by the pure
@@ -4001,6 +4527,11 @@ export class VdFlowchart {
     }
     // autoFit is a readiness preference, not a request to reset the camera.
     if ('autoFit' in options) this.autoFit = Boolean(options.autoFit);
+    if ('keyboardShortcuts' in options) {
+      this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
+    }
+    this.syncCanvasLabel();
+    if (this.shortcutsHelpOpen) this.renderShortcutsHelp();
     if ('history' in options && (options.history !== false) !== this.historyEnabled) {
       this.historyEnabled = options.history !== false;
       this.history = [];

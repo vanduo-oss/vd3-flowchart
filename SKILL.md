@@ -27,12 +27,22 @@ future versions and malformed JSON are rejected before changing current work.
 `FLOWCHART_DOCUMENT_VERSION` describes saved JSON; `VD_FLOWCHART_VERSION`
 describes the package release. Do not replace document versions with app versions.
 
+## Keyboard
+
+`keyboardShortcuts` defaults to `'mindmap'`: with a node selected on the focused
+canvas, Tab adds a child, Enter adds a sibling (Shift+Enter above), and F2, Space,
+or typing edits the label. While editing, Enter saves and Tab saves and adds a
+child. Arrows select the nearest node in that direction; Alt+Arrow nudges.
+Shift+Tab, or Esc then Tab, leaves the canvas. `?` lists every shortcut. Use
+`'basic'` when Tab must always move focus; Enter then edits and Ctrl/Cmd+Enter
+saves. A node plus its edge, and naming a just-inserted node, undo in one step.
+
 ## Verification
 
 Add a node, toggle read-only, and confirm the edit remains. Undo/redo, save/reload,
-and echo a change back through `data`. With only the keyboard, select nodes using
-canvas arrows, edit with Enter, save with Ctrl/Cmd+Enter, and use Graph outline
-to read relationships and connect nodes. Check the consumer's screen reader.
+and echo a change back through `data`. With only the keyboard, build a small map
+with Tab, typing, and Enter, move with arrows, and use Graph outline to read
+relationships and connect nodes. Check the consumer's screen reader.
 
 Use [Vue declarations](dist/vue.d.ts) for component props/events/exposed methods
 and [core declarations](dist/core.d.ts) for document types and editor methods.

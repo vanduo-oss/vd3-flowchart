@@ -8,6 +8,7 @@ import type {
   VdFlowchart as VdFlowchartCore,
   LayoutMode,
   LayoutOptions,
+  FlowchartKeyboardShortcuts,
 } from './core';
 
 /** Loosely-typed document accepted by the `data` prop. */
@@ -32,6 +33,8 @@ export interface VdFlowchartProps {
   history?: boolean;
   /** Maximum number of history entries to retain. */
   historyLimit?: number;
+  /** Keyboard model on the focused canvas (default `'mindmap'`). */
+  keyboardShortcuts?: FlowchartKeyboardShortcuts;
 }
 
 export interface VdFlowchartEmits {

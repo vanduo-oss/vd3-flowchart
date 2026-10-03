@@ -6,7 +6,7 @@ Vanduo **flowchart** for Vue 3: a node/edge editor with undo/redo, layout
 modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
-**Status: 1.3.0.** `VD_FLOWCHART_VERSION` tracks the package release.
+**Status: 1.4.0.** `VD_FLOWCHART_VERSION` tracks the package release.
 `FLOWCHART_DOCUMENT_VERSION` (currently `1.2.0`) is the value `toJSON()`
 writes. Do not reset either independently without a compatibility plan.
 
@@ -40,7 +40,8 @@ Named exports only — no default export. `VdFlowchart` is the Vue wrapper; the
 editor class is re-exported as `VdFlowchartCore` (same class name upstream).
 `computeLayout`, `LAYOUT_MODES`, and the `FLOWCHART_*` tables
 (`FLOWCHART_NODE_TYPES`, `FLOWCHART_PORTS`, `FLOWCHART_EDGE_MARKERS`,
-`FLOWCHART_EDGE_ROUTES`) ship alongside. The core does not import Vue.
+`FLOWCHART_EDGE_ROUTES`, `FLOWCHART_KEYBOARD_SHORTCUTS`) ship alongside. The
+core does not import Vue.
 
 `vue` is never bundled — it stays external in both the esm and cjs outputs.
 The build emits `dist/meta.json` and **fails** if any input leaves `src/` or
@@ -49,7 +50,7 @@ if anything but `vue` is externalized. The package declares
 
 ## Version policy
 
-`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.3.0`). Bump those
+`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.4.0`). Bump those
 together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
 unless the serialized schema changes; add fixtures and explicit compatibility
 rules for a format change. Unversioned 1.x documents through 1.2.0 still load.
@@ -57,6 +58,33 @@ Malformed JSON and unsupported future versions throw before the active
 document, selection, or history change. This continues the old-line
 `@vanduo-oss/flowchart` lineage (never reset to `1.0.0`). Do not reuse the
 retired npm name `@vanduo-oss/flowchart`.
+
+## Editing and keyboard
+
+Hover or select a node to show a connection handle outside each side. Drag a
+handle to connect; click it to add a connected node in that direction. Resize
+from the corner squares or by dragging a side.
+
+With the canvas focused, the default `keyboardShortcuts: 'mindmap'` mode
+follows mind-map tools such as XMind and MindNode:
+
+| Keys | Action |
+| --- | --- |
+| Arrow keys | Select the nearest node in that direction |
+| Tab | Add a child node and edit it |
+| Enter / Shift+Enter | Add a sibling below / above and edit it |
+| F2, Space, or typing | Edit the label |
+| Enter / Tab while editing | Save / save and add a child (Shift+Enter: new line) |
+| Alt+Arrow (Shift for 1 px) | Nudge the node by one grid step |
+| Cmd/Ctrl+D | Duplicate the node |
+| Cmd/Ctrl + `=` / `-` / `0`, Shift+1 | Zoom in, out, 100%, fit |
+| Esc | Cancel editing, then the tool, then deselect |
+| Shift+Tab, or Esc then Tab | Leave the canvas |
+| `?` | Show all shortcuts |
+
+`keyboardShortcuts: 'basic'` keeps Tab for focus movement; Enter or F2 edits and
+Ctrl/Cmd+Enter saves. A node plus its edge is one undo step, and naming a
+just-inserted node joins that step.
 
 ## Theming
 

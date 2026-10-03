@@ -114,6 +114,15 @@
   color: var(--vd-flowchart-muted);
 }
 
+/* The palette column is 88px wide; keep its title on one line. */
+.vd-flowchart-panel--palette .vd-flowchart-panel-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .vd-flowchart-palette {
   display: grid;
   grid-template-columns: 1fr;
@@ -371,6 +380,63 @@
   background: var(--vd-flowchart-canvas-bg);
 }
 
+.vd-flowchart-shortcuts-btn {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.vd-flowchart-shortcuts {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 6;
+  box-sizing: border-box;
+  width: min(24rem, calc(100% - 1.5rem));
+  max-height: calc(100% - 1.5rem);
+  overflow-y: auto;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vd-flowchart-panel) 96%, transparent);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--vd-flowchart-text) 14%, transparent);
+  color: var(--vd-flowchart-text);
+  font-size: 0.8rem;
+}
+
+.vd-flowchart-shortcuts[hidden] {
+  display: none;
+}
+
+.vd-flowchart-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.vd-flowchart-shortcuts-list {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+}
+
+.vd-flowchart-shortcuts-list dt,
+.vd-flowchart-shortcuts-list dd {
+  margin: 0;
+  padding: 0;
+  line-height: 1.35;
+}
+
+.vd-flowchart-shortcuts-list dt {
+  font-weight: 700;
+}
+
+.vd-flowchart-shortcuts-list dd {
+  color: var(--vd-flowchart-muted);
+}
+
 .vd-flowchart-svg {
   display: block;
   width: 100%;
@@ -507,21 +573,42 @@
   stroke: var(--vd-flowchart-accent);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
-  transition: opacity 120ms ease, transform 120ms ease, fill 120ms ease;
+  pointer-events: none;
+  transition: opacity 120ms ease, fill 120ms ease;
 }
 
-.vd-flowchart-port-group.is-visible {
+.vd-flowchart-port-plus {
+  fill: none;
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+/* Handles appear on node hover as well as on selection. Hidden during a node
+   drag or resize so they do not flicker under the pointer. */
+.vd-flowchart-port-group.is-visible,
+.vd-flowchart-node:hover:not(.is-dragging, .is-resizing) .vd-flowchart-port-group {
   pointer-events: auto;
   cursor: crosshair;
 }
 
-.vd-flowchart-port-group.is-visible .vd-flowchart-port {
+.vd-flowchart-port-group.is-visible .vd-flowchart-port,
+.vd-flowchart-node:hover:not(.is-dragging, .is-resizing) .vd-flowchart-port {
   opacity: 1;
 }
 
-.vd-flowchart-port-group.is-visible:hover .vd-flowchart-port {
-  transform: scale(1.08);
-  fill: color-mix(in srgb, var(--vd-flowchart-accent) 12%, var(--vd-bg-primary, #fcfbf7));
+/* Color only: a transform here would scale around the node origin and shift
+   the handle away from the pointer. */
+.vd-flowchart-port-group:hover .vd-flowchart-port {
+  fill: color-mix(in srgb, var(--vd-flowchart-accent) 22%, var(--vd-bg-primary, #fcfbf7));
+}
+
+.vd-flowchart-port-group:hover .vd-flowchart-port-plus {
+  opacity: 1;
 }
 
 .vd-flowchart-canvas.is-connecting .vd-flowchart-node:hover .vd-flowchart-node-shape {
@@ -529,14 +616,19 @@
   filter: none;
 }
 
-.vd-flowchart-canvas.is-connecting .vd-flowchart-port-group.is-visible .vd-flowchart-port,
-.vd-flowchart-canvas.is-arrow-tool .vd-flowchart-port-group.is-visible .vd-flowchart-port {
-  opacity: 1;
+.vd-flowchart-canvas.is-connecting .vd-flowchart-port-group:hover .vd-flowchart-port-plus,
+.vd-flowchart-canvas.is-arrow-tool .vd-flowchart-port-group:hover .vd-flowchart-port-plus {
+  opacity: 0;
 }
 
-.vd-flowchart-canvas.is-connecting .vd-flowchart-port-group.is-visible:hover .vd-flowchart-port,
-.vd-flowchart-canvas.is-arrow-tool .vd-flowchart-port-group.is-visible:hover .vd-flowchart-port {
-  transform: none;
+.vd-flowchart-selection-box {
+  fill: none;
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .vd-flowchart-edge-endpoint-hit {

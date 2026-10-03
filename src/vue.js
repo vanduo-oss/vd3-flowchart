@@ -31,6 +31,8 @@ export const VdFlowchart = defineComponent({
     history: { type: Boolean, default: true },
     /** Maximum number of history entries to retain. */
     historyLimit: { type: Number, default: undefined },
+    /** Keyboard model: 'mindmap' (Tab child, Enter sibling) or 'basic'. */
+    keyboardShortcuts: { type: String, default: 'mindmap' },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
   setup(props, { emit, expose }) {
@@ -46,6 +48,7 @@ export const VdFlowchart = defineComponent({
         autoFit: props.autoFit,
         history: props.history,
         historyLimit: props.historyLimit,
+        keyboardShortcuts: props.keyboardShortcuts,
       });
       FORWARDED_EVENTS.forEach((name) => {
         instance.on(name, (payload) => emit(name, payload));
@@ -68,7 +71,14 @@ export const VdFlowchart = defineComponent({
       { deep: true },
     );
     watch(
-      () => [props.readonly, props.gridSize, props.autoFit, props.history, props.historyLimit],
+      () => [
+        props.readonly,
+        props.gridSize,
+        props.autoFit,
+        props.history,
+        props.historyLimit,
+        props.keyboardShortcuts,
+      ],
       () => {
         if (!instance) return;
         instance.updateOptions({
@@ -77,6 +87,7 @@ export const VdFlowchart = defineComponent({
           autoFit: props.autoFit,
           history: props.history,
           historyLimit: props.historyLimit,
+          keyboardShortcuts: props.keyboardShortcuts,
         });
       },
     );
