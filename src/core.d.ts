@@ -11,6 +11,11 @@ export type FlowchartEdgeRoute = 'curve' | 'straight' | 'orthogonal';
 export type FlowchartEdgeKind = 'line' | 'arrow';
 export type FlowchartDirection = 'right' | 'left' | 'up' | 'down';
 export type LayoutMode = 'tree' | 'radial' | 'grid';
+/**
+ * `'mindmap'` (default): Tab adds a child, Enter adds a sibling, F2/Space or
+ * typing edits. `'basic'`: Enter edits and Tab moves focus as usual.
+ */
+export type FlowchartKeyboardShortcuts = 'mindmap' | 'basic';
 
 export interface FlowchartViewport {
   x: number;
@@ -27,6 +32,8 @@ export interface FlowchartNode {
   height: number;
   text: string;
   data: Record<string, unknown>;
+  /** Present (and true) only on collapsed nodes; document format 1.3.0. */
+  collapsed?: true;
 }
 
 export interface FlowchartEndpoint {
@@ -79,6 +86,7 @@ export interface FlowchartNodeInput {
   height?: number;
   text?: string;
   data?: Record<string, unknown>;
+  collapsed?: boolean;
   /** Place relative to another node instead of at the viewport center. */
   relativeTo?: string | FlowchartRelativeTo;
 }
@@ -109,6 +117,27 @@ export interface AddChildNodeOptions extends FlowchartNodeInput {
   angle?: number;
   /** Extra options merged into the parent → child edge. */
   edge?: FlowchartEdgeInput;
+}
+
+export interface InsertBranchNodeOptions {
+  /** Side of the parent to grow on; defaults to the branch's growth direction. */
+  direction?: FlowchartDirection;
+  /** Sibling to stack next to; defaults to the last sibling on that side. */
+  anchorId?: string;
+  /** Place before `anchorId` instead of after it. */
+  before?: boolean;
+  /** Open the label editor on the new node. */
+  edit?: boolean;
+}
+
+export interface InsertSiblingNodeOptions {
+  before?: boolean;
+  edit?: boolean;
+}
+
+export interface StartTextEditOptions {
+  /** Replace the label with this text and place the caret at the end. */
+  initialText?: string;
 }
 
 export interface LayoutOptions {
@@ -156,7 +185,10 @@ export interface FlowchartChangeEvent {
 }
 
 export interface FlowchartSelectEvent {
+  /** Primary item; keeps its single-item shape when several nodes are selected. */
   selection: FlowchartSelection | null;
+  /** Every selected node id, the primary node included. */
+  nodeIds: string[];
 }
 
 export interface FlowchartViewportEvent {
@@ -197,6 +229,14 @@ export interface VdFlowchartOptions {
   history?: boolean;
   /** Maximum retained history entries (default 100). */
   historyLimit?: number;
+  /** Keyboard model on the focused canvas (default `'mindmap'`). */
+  keyboardShortcuts?: FlowchartKeyboardShortcuts;
+  /** Snap dragged nodes to other nodes' edges and centres; Alt bypasses (default true). */
+  snapGuides?: boolean;
+  /** Show the overview minimap; it hides on canvases narrower than 480px (default true). */
+  minimap?: boolean;
+  /** Re-run the current tree or radial layout after insertions, in the same undo step (default false). */
+  autoLayout?: boolean;
 }
 
 export class VdFlowchart {
@@ -211,6 +251,11 @@ export class VdFlowchart {
   selectNode(nodeId: string): this;
   selectEdge(edgeId: string): this;
   deselect(): this;
+  /** Select several nodes; `primary` (default: the last id) drives single-node UI. */
+  selectNodes(nodeIds: string[], options?: { primary?: string }): this;
+  toggleNodeSelection(nodeId: string): this;
+  getSelectedNodeIds(): string[];
+  isNodeSelected(nodeId: string): boolean;
 
   // Events
   on<K extends keyof FlowchartEventMap>(
@@ -228,6 +273,27 @@ export class VdFlowchart {
     parentId: string,
     options?: AddChildNodeOptions,
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  /** Add a connected node on a side of the parent; node and edge undo as one step. */
+  insertBranchNode(
+    parentId: string,
+    options?: InsertBranchNodeOptions,
+  ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  /** Add a sibling next to a node (a child when the node has no parent). */
+  insertSiblingNode(
+    nodeId: string,
+    options?: InsertSiblingNodeOptions,
+  ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
+  duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
+  /** Collapse or expand a node's branch; undoable, reason `node:collapse`. */
+  setCollapsed(nodeId: string, collapsed: boolean): boolean;
+  toggleCollapsed(nodeId: string): boolean;
+  /** Nodes not hidden inside a collapsed branch. */
+  getVisibleNodes(): FlowchartNode[];
+  isNodeHidden(nodeId: string): boolean;
+  nudgeNode(nodeId: string, direction: FlowchartDirection, distance: number): FlowchartNode | null;
+  nudgeNodes(nodeIds: string[], direction: FlowchartDirection, distance: number): FlowchartNode[];
+  /** Select the nearest node in a direction (spatial keyboard navigation). */
+  navigateSelection(direction: FlowchartDirection): boolean;
   updateNode(
     nodeId: string,
     patch?: Partial<FlowchartNodeInput>,
@@ -260,6 +326,16 @@ export class VdFlowchart {
   zoomOut(): this;
   resetView(): this;
   fitView(): this;
+  /** Zoom around the view centre to an absolute scale (clamped). */
+  zoomTo(scale: number): this;
+  /** Pan just enough to bring a node into view. */
+  revealNode(nodeId: string): void;
+  /** Show or hide the minimap. */
+  setMinimapEnabled(enabled: boolean): this;
+  /** Pan so a world point is at the centre of the view. */
+  centerViewOn(worldX: number, worldY: number): this;
+  /** Open, close, or toggle the keyboard shortcuts overlay. */
+  toggleShortcutsHelp(force?: boolean): this;
 
   // Document
   clear(): this;
@@ -267,7 +343,11 @@ export class VdFlowchart {
   toJSON(): FlowchartDocument;
 
   // Text editing
-  startTextEdit(nodeId: string): boolean;
+  startTextEdit(nodeId: string, options?: StartTextEditOptions): boolean;
+  /** Open the inline label editor on a connection. */
+  startEdgeLabelEdit(edgeId: string, options?: StartTextEditOptions): boolean;
+  /** Select a connection on one side of a node; repeated calls cycle. */
+  selectSideEdge(nodeId: string, direction: FlowchartDirection): boolean;
   stopTextEdit(options?: { commit?: boolean }): void;
 
   // Lifecycle
@@ -275,7 +355,15 @@ export class VdFlowchart {
   updateOptions(
     options: Pick<
       VdFlowchartOptions,
-      'readonly' | 'gridSize' | 'autoFit' | 'history' | 'historyLimit'
+      | 'readonly'
+      | 'gridSize'
+      | 'autoFit'
+      | 'history'
+      | 'historyLimit'
+      | 'keyboardShortcuts'
+      | 'snapGuides'
+      | 'minimap'
+      | 'autoLayout'
     >,
   ): this;
   destroy(): void;
@@ -297,3 +385,4 @@ export const FLOWCHART_NODE_TYPES: readonly FlowchartNodeType[];
 export const FLOWCHART_PORTS: readonly FlowchartPort[];
 export const FLOWCHART_EDGE_MARKERS: readonly FlowchartEdgeMarker[];
 export const FLOWCHART_EDGE_ROUTES: readonly FlowchartEdgeRoute[];
+export const FLOWCHART_KEYBOARD_SHORTCUTS: readonly FlowchartKeyboardShortcuts[];

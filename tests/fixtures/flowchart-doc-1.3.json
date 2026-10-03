@@ -1,0 +1,17 @@
+{
+  "version": "1.3.0",
+  "viewport": { "x": 0, "y": 0, "scale": 1 },
+  "nodes": [
+    { "id": "root", "type": "circle", "x": 0, "y": 0, "width": 128, "height": 128, "text": "Root", "data": {} },
+    { "id": "ideas", "type": "rounded-rect", "x": 240, "y": 16, "width": 180, "height": 96, "text": "Ideas", "data": {}, "collapsed": true },
+    { "id": "idea-a", "type": "rect", "x": 500, "y": -40, "width": 140, "height": 56, "text": "Idea A", "data": {} },
+    { "id": "idea-b", "type": "rect", "x": 500, "y": 80, "width": 140, "height": 56, "text": "Idea B", "data": {} },
+    { "id": "notes", "type": "rect", "x": 240, "y": 200, "width": 140, "height": 56, "text": "Notes", "data": {} }
+  ],
+  "edges": [
+    { "id": "e-root-ideas", "from": { "nodeId": "root", "port": "right" }, "to": { "nodeId": "ideas", "port": "left" }, "kind": "arrow", "startMarker": "none", "endMarker": "arrow", "strokeWidth": 2.25, "route": "curve", "label": "", "data": {} },
+    { "id": "e-ideas-a", "from": { "nodeId": "ideas", "port": "right" }, "to": { "nodeId": "idea-a", "port": "left" }, "kind": "arrow", "startMarker": "none", "endMarker": "arrow", "strokeWidth": 2.25, "route": "curve", "label": "", "data": {} },
+    { "id": "e-ideas-b", "from": { "nodeId": "ideas", "port": "right" }, "to": { "nodeId": "idea-b", "port": "left" }, "kind": "arrow", "startMarker": "none", "endMarker": "arrow", "strokeWidth": 2.25, "route": "curve", "label": "", "data": {} },
+    { "id": "e-root-notes", "from": { "nodeId": "root", "port": "bottom" }, "to": { "nodeId": "notes", "port": "left" }, "kind": "arrow", "startMarker": "none", "endMarker": "arrow", "strokeWidth": 2.25, "route": "curve", "label": "", "data": {} }
+  ]
+}

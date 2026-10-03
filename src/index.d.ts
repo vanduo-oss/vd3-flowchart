@@ -20,6 +20,7 @@ export {
   FLOWCHART_PORTS,
   FLOWCHART_EDGE_MARKERS,
   FLOWCHART_EDGE_ROUTES,
+  FLOWCHART_KEYBOARD_SHORTCUTS,
 } from './core';
 
 export type {
@@ -30,6 +31,10 @@ export type {
   FlowchartEdgeKind,
   FlowchartDirection,
   LayoutMode,
+  FlowchartKeyboardShortcuts,
+  InsertBranchNodeOptions,
+  InsertSiblingNodeOptions,
+  StartTextEditOptions,
   FlowchartViewport,
   FlowchartNode,
   FlowchartEndpoint,

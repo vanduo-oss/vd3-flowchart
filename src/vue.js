@@ -13,6 +13,18 @@ import { VdFlowchart as VdFlowchartCore } from './core.js';
 
 // `ready` is forwarded from the core editor (fires post-layout) like the rest.
 const FORWARDED_EVENTS = ['change', 'select', 'viewport', 'connect', 'ready'];
+// Props passed to the core on creation and through updateOptions() after.
+const EDITOR_OPTION_KEYS = [
+  'readonly',
+  'gridSize',
+  'autoFit',
+  'history',
+  'historyLimit',
+  'keyboardShortcuts',
+  'snapGuides',
+  'minimap',
+  'autoLayout',
+];
 
 export const VdFlowchart = defineComponent({
   name: 'VdFlowchart',
@@ -31,21 +43,28 @@ export const VdFlowchart = defineComponent({
     history: { type: Boolean, default: true },
     /** Maximum number of history entries to retain. */
     historyLimit: { type: Number, default: undefined },
+    /** Keyboard model: 'mindmap' (Tab child, Enter sibling) or 'basic'. */
+    keyboardShortcuts: { type: String, default: 'mindmap' },
+    /** Snap dragged nodes to other nodes' edges and centres (default true). */
+    snapGuides: { type: Boolean, default: true },
+    /** Show the overview minimap in the canvas corner (default true). */
+    minimap: { type: Boolean, default: true },
+    /** Re-run the current layout after keyboard or handle insertions (default false). */
+    autoLayout: { type: Boolean, default: false },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
   setup(props, { emit, expose }) {
     const el = ref(null);
     let instance = null;
 
+    const editorOptions = () =>
+      Object.fromEntries(EDITOR_OPTION_KEYS.map((key) => [key, props[key]]));
+
     const create = () => {
       instance = new VdFlowchartCore({
         element: el.value,
         data: props.data,
-        readonly: props.readonly,
-        gridSize: props.gridSize,
-        autoFit: props.autoFit,
-        history: props.history,
-        historyLimit: props.historyLimit,
+        ...editorOptions(),
       });
       FORWARDED_EVENTS.forEach((name) => {
         instance.on(name, (payload) => emit(name, payload));
@@ -68,16 +87,9 @@ export const VdFlowchart = defineComponent({
       { deep: true },
     );
     watch(
-      () => [props.readonly, props.gridSize, props.autoFit, props.history, props.historyLimit],
+      () => EDITOR_OPTION_KEYS.map((key) => props[key]),
       () => {
-        if (!instance) return;
-        instance.updateOptions({
-          readonly: props.readonly,
-          gridSize: props.gridSize,
-          autoFit: props.autoFit,
-          history: props.history,
-          historyLimit: props.historyLimit,
-        });
+        if (instance) instance.updateOptions(editorOptions());
       },
     );
 

@@ -3,7 +3,7 @@ import { expect, test, type ConsoleMessage } from '@playwright/test';
 // Real-browser packaging smoke: the fixture imports the BUILT dist ESM entry
 // (/dist/index.js, with `vue` resolved locally via an import map) and mounts
 // the framework-agnostic flowchart core with a seeded document. Asserts host
-// shell, VD_FLOWCHART_VERSION 1.3.0, seeded nodes, toJSON().version 1.2.0, undo, and zero console
+// shell, VD_FLOWCHART_VERSION 1.4.0, seeded nodes, toJSON().version 1.2.0, undo, and zero console
 // errors.
 
 interface FlowchartWindow {
@@ -37,14 +37,14 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     const version = await page.evaluate(
       () => (window as unknown as FlowchartWindow).flowchartVersion,
     );
-    expect(version).toBe('1.3.0');
+    expect(version).toBe('1.4.0');
   });
 
-  test('renders seeded nodes and serializes version 1.2.0', async ({ page }) => {
+  test('renders seeded nodes and serializes version 1.3.0', async ({ page }) => {
     await expect(page.locator('#flowchart .vd-flowchart-node')).toHaveCount(2);
 
     const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
-    expect(doc.version).toBe('1.2.0');
+    expect(doc.version).toBe('1.3.0');
     expect(doc.nodes).toHaveLength(2);
     expect(doc.edges).toHaveLength(1);
   });
@@ -62,6 +62,153 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
 
     const after = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
     expect(after.nodes).toHaveLength(before.nodes.length);
+  });
+
+  test('hovering a connection handle keeps it in place', async ({ page }) => {
+    const node = page.locator('#flowchart g.vd-flowchart-node').first();
+    await node.locator('.vd-flowchart-node-shape').hover();
+    const port = node.locator('[data-port="right"] .vd-flowchart-port');
+    await expect(port).toHaveCSS('opacity', '1');
+    const before = await port.boundingBox();
+    await node.locator('[data-port="right"] .vd-flowchart-port-hit').hover();
+    await expect(node.locator('[data-port="right"] .vd-flowchart-port-plus')).toHaveCSS(
+      'opacity',
+      '1',
+    );
+    await page.waitForTimeout(200);
+    const after = await port.boundingBox();
+    expect(after).toEqual(before);
+  });
+
+  test('clicking a handle adds a connected node; Tab and Enter extend the map', async ({
+    page,
+  }) => {
+    const node = page.locator('#flowchart g.vd-flowchart-node').first();
+    await node.locator('.vd-flowchart-node-shape').click();
+    await node.locator('[data-port="bottom"] .vd-flowchart-port-hit').click();
+    await expect(page.locator('#flowchart .vd-flowchart-node')).toHaveCount(3);
+    const input = page.locator('#flowchart .vd-flowchart-text-editor');
+    await expect(input).toBeFocused();
+    await page.keyboard.type('Child');
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#flowchart .vd-flowchart-node')).toHaveCount(4);
+    await page.keyboard.type('Grandchild');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#flowchart .vd-flowchart-node')).toHaveCount(5);
+    await page.keyboard.press('Escape');
+
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    const texts = (doc.nodes as Array<{ text: string }>).map((item) => item.text);
+    expect(texts).toEqual(expect.arrayContaining(['Child', 'Grandchild']));
+    expect(doc.edges).toHaveLength(4);
+  });
+
+  test('dragging a handle onto another node connects them', async ({ page }) => {
+    const nodes = page.locator('#flowchart g.vd-flowchart-node');
+    await nodes.first().locator('.vd-flowchart-node-shape').click();
+    const handle = await nodes
+      .first()
+      .locator('[data-port="bottom"] .vd-flowchart-port')
+      .boundingBox();
+    const target = await nodes.nth(1).locator('.vd-flowchart-node-shape').boundingBox();
+    await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height - 4, {
+      steps: 8,
+    });
+    await page.mouse.up();
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect(doc.nodes).toHaveLength(2);
+    expect(doc.edges).toHaveLength(2);
+  });
+
+  test('labels a connection from the keyboard', async ({ page }) => {
+    await page
+      .locator('#flowchart g.vd-flowchart-node')
+      .first()
+      .locator('.vd-flowchart-node-shape')
+      .click();
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.type('yes');
+    await expect(page.locator('#flowchart .vd-flowchart-text-editor--edge')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#flowchart .vd-flowchart-edge-label')).toHaveText('yes');
+  });
+
+  test('a near-aligned drag snaps to the other node and shows a guide', async ({ page }) => {
+    const target = page.locator('#flowchart g.vd-flowchart-node').nth(1);
+    const box = (await target.locator('.vd-flowchart-node-shape').boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 4, { steps: 4 });
+    await expect(page.locator('#flowchart .vd-flowchart-guide')).not.toHaveCount(0);
+    await page.mouse.up();
+    await expect(page.locator('#flowchart .vd-flowchart-guide')).toHaveCount(0);
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect((doc.nodes as Array<{ y: number }>)[1].y).toBe(80);
+  });
+
+  test('clicking the minimap pans the view', async ({ page }) => {
+    const minimap = page.locator('#flowchart .vd-flowchart-minimap');
+    await expect(minimap).toBeVisible();
+    const before = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    const box = (await minimap.boundingBox())!;
+    await page.mouse.click(box.x + 8, box.y + 8);
+    const after = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect(after.viewport).not.toEqual(before.viewport);
+    expect(after.nodes).toEqual(before.nodes);
+    await page.locator('#flowchart [data-flowchart-action="minimap"]').click();
+    await expect(minimap).toBeHidden();
+  });
+
+  test('Shift+drag selects both nodes and dragging moves them together', async ({ page }) => {
+    const shapes = page.locator('#flowchart g.vd-flowchart-node .vd-flowchart-node-shape');
+    const first = (await shapes.nth(0).boundingBox())!;
+    const second = (await shapes.nth(1).boundingBox())!;
+    await page.keyboard.down('Shift');
+    await page.mouse.move(first.x - 24, first.y - 24);
+    await page.mouse.down();
+    await page.mouse.move(second.x + second.width + 24, second.y + second.height + 24, {
+      steps: 6,
+    });
+    await page.mouse.up();
+    await page.keyboard.up('Shift');
+    await expect(page.locator('#flowchart .vd-flowchart-node.is-selected')).toHaveCount(2);
+
+    const before = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(first.x + first.width / 2 + 60, first.y + first.height / 2 + 90, {
+      steps: 6,
+    });
+    await page.mouse.up();
+    const after = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    const shift = (doc: typeof before, index: number) => {
+      const nodes = doc.nodes as Array<{ x: number; y: number }>;
+      return nodes[index];
+    };
+    const dx0 = shift(after, 0).x - shift(before, 0).x;
+    const dx1 = shift(after, 1).x - shift(before, 1).x;
+    const dy0 = shift(after, 0).y - shift(before, 0).y;
+    const dy1 = shift(after, 1).y - shift(before, 1).y;
+    expect(dx0).toBeGreaterThan(0);
+    expect(dx1).toBeCloseTo(dx0, 2);
+    expect(dy1).toBeCloseTo(dy0, 2);
+  });
+
+  test('collapses a branch with the badge and expands it again', async ({ page }) => {
+    const first = page.locator('#flowchart g.vd-flowchart-node').first();
+    await first.locator('.vd-flowchart-node-shape').click();
+    const toggle = first.locator('.vd-flowchart-collapse-toggle');
+    await expect(toggle.locator('text')).toHaveText('−');
+    await toggle.locator('circle').click();
+    await expect(page.locator('#flowchart g.vd-flowchart-node')).toHaveCount(1);
+    await expect(first.locator('.vd-flowchart-collapse-toggle text')).toHaveText('+1');
+    const doc = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect((doc.nodes as Array<{ collapsed?: boolean }>)[0].collapsed).toBe(true);
+    await first.locator('.vd-flowchart-collapse-toggle circle').click();
+    await expect(page.locator('#flowchart g.vd-flowchart-node')).toHaveCount(2);
   });
 
   test.afterEach(() => {

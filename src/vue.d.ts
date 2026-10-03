@@ -8,6 +8,7 @@ import type {
   VdFlowchart as VdFlowchartCore,
   LayoutMode,
   LayoutOptions,
+  FlowchartKeyboardShortcuts,
 } from './core';
 
 /** Loosely-typed document accepted by the `data` prop. */
@@ -32,6 +33,14 @@ export interface VdFlowchartProps {
   history?: boolean;
   /** Maximum number of history entries to retain. */
   historyLimit?: number;
+  /** Keyboard model on the focused canvas (default `'mindmap'`). */
+  keyboardShortcuts?: FlowchartKeyboardShortcuts;
+  /** Snap dragged nodes to alignment guides; Alt bypasses (default true). */
+  snapGuides?: boolean;
+  /** Show the overview minimap (default true). */
+  minimap?: boolean;
+  /** Re-run the current layout after keyboard or handle insertions (default false). */
+  autoLayout?: boolean;
 }
 
 export interface VdFlowchartEmits {
