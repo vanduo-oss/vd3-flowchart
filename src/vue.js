@@ -22,6 +22,7 @@ const EDITOR_OPTION_KEYS = [
   'historyLimit',
   'keyboardShortcuts',
   'snapGuides',
+  'minimap',
 ];
 
 export const VdFlowchart = defineComponent({
@@ -45,6 +46,8 @@ export const VdFlowchart = defineComponent({
     keyboardShortcuts: { type: String, default: 'mindmap' },
     /** Snap dragged nodes to other nodes' edges and centres (default true). */
     snapGuides: { type: Boolean, default: true },
+    /** Show the overview minimap in the canvas corner (default true). */
+    minimap: { type: Boolean, default: true },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
   setup(props, { emit, expose }) {

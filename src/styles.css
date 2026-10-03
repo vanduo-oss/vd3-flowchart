@@ -380,6 +380,44 @@
   background: var(--vd-flowchart-canvas-bg);
 }
 
+.vd-flowchart-minimap {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 4;
+  width: 180px;
+  height: 120px;
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vd-flowchart-panel) 92%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--vd-flowchart-text) 10%, transparent);
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.vd-flowchart-minimap[hidden] {
+  display: none;
+}
+
+.vd-flowchart-minimap-svg {
+  display: block;
+}
+
+.vd-flowchart-minimap-node {
+  fill: color-mix(in srgb, var(--vd-flowchart-muted) 45%, transparent);
+}
+
+.vd-flowchart-minimap-node.is-selected {
+  fill: var(--vd-flowchart-accent);
+}
+
+.vd-flowchart-minimap-viewport {
+  fill: color-mix(in srgb, var(--vd-flowchart-accent) 12%, transparent);
+  stroke: var(--vd-flowchart-accent);
+  stroke-width: 1.25;
+}
+
 .vd-flowchart-shortcuts-btn {
   font-size: 0.95rem;
   font-weight: 700;

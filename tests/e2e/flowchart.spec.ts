@@ -149,6 +149,19 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     expect((doc.nodes as Array<{ y: number }>)[1].y).toBe(80);
   });
 
+  test('clicking the minimap pans the view', async ({ page }) => {
+    const minimap = page.locator('#flowchart .vd-flowchart-minimap');
+    await expect(minimap).toBeVisible();
+    const before = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    const box = (await minimap.boundingBox())!;
+    await page.mouse.click(box.x + 8, box.y + 8);
+    const after = await page.evaluate(() => (window as unknown as FlowchartWindow).toJSON());
+    expect(after.viewport).not.toEqual(before.viewport);
+    expect(after.nodes).toEqual(before.nodes);
+    await page.locator('#flowchart [data-flowchart-action="minimap"]').click();
+    await expect(minimap).toBeHidden();
+  });
+
   test.afterEach(() => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });

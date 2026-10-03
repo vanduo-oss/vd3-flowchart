@@ -227,6 +227,8 @@ export interface VdFlowchartOptions {
   keyboardShortcuts?: FlowchartKeyboardShortcuts;
   /** Snap dragged nodes to other nodes' edges and centres; Alt bypasses (default true). */
   snapGuides?: boolean;
+  /** Show the overview minimap; it hides on canvases narrower than 480px (default true). */
+  minimap?: boolean;
 }
 
 export class VdFlowchart {
@@ -308,6 +310,10 @@ export class VdFlowchart {
   zoomTo(scale: number): this;
   /** Pan just enough to bring a node into view. */
   revealNode(nodeId: string): void;
+  /** Show or hide the minimap. */
+  setMinimapEnabled(enabled: boolean): this;
+  /** Pan so a world point is at the centre of the view. */
+  centerViewOn(worldX: number, worldY: number): this;
   /** Open, close, or toggle the keyboard shortcuts overlay. */
   toggleShortcutsHelp(force?: boolean): this;
 
@@ -336,6 +342,7 @@ export class VdFlowchart {
       | 'historyLimit'
       | 'keyboardShortcuts'
       | 'snapGuides'
+      | 'minimap'
     >,
   ): this;
   destroy(): void;

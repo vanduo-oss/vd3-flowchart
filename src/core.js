@@ -28,6 +28,8 @@ const TOOLBAR_ICON_PATHS = {
     'M216,48V88a8,8,0,0,1-16,0V67.31l-42.34,42.35a8,8,0,0,1-11.32-11.32L188.69,56H168a8,8,0,0,1,0-16h40A8,8,0,0,1,216,48ZM98.34,146.34,56,188.69V168a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H88a8,8,0,0,0,0-16H67.31l42.35-42.34a8,8,0,0,0-11.32-11.32Zm11.32-36.68L67.31,56H88a8,8,0,0,0,0-16H48a8,8,0,0,0-8,8V88a8,8,0,0,0,16,0V67.31l42.34,42.35a8,8,0,0,0,11.32-11.32ZM208,160a8,8,0,0,0-8,8v20.69l-42.34-42.35a8,8,0,0,0-11.32,11.32L188.69,200H168a8,8,0,0,0,0,16h40a8,8,0,0,0,8-8V168A8,8,0,0,0,208,160Z',
   undo: 'M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z',
   redo: 'M240,56v48a8,8,0,0,1-8,8H184a8,8,0,0,1,0-16H211.4L184.81,71.64l-.25-.24a80,80,0,1,0-1.67,114.78,8,8,0,0,1,11,11.63A95.44,95.44,0,0,1,128,224h-1.32A96,96,0,1,1,195.75,60L224,85.8V56a8,8,0,1,1,16,0Z',
+  minimap:
+    'M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z',
   clear:
     'M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z',
 };
@@ -99,6 +101,9 @@ const RESIZE_HANDLE_SIZE = 9;
 const SELECTION_OUTSET = 4;
 const GUIDE_SNAP_DISTANCE = 6;
 const GUIDE_OVERHANG = 12;
+const MINIMAP_WIDTH = 180;
+const MINIMAP_HEIGHT = 120;
+const MINIMAP_MIN_CANVAS_WIDTH = 480;
 // Shapes whose outline does not reach the corners of their bounds get a dashed
 // selection box so the corner resize handles have something to sit on.
 const SELECTION_BOX_TYPES = new Set(['circle', 'diamond', 'label']);
@@ -1373,6 +1378,9 @@ export class VdFlowchart {
     this.coalesceInsertedText = false;
     this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
     this.snapGuides = options.snapGuides !== false;
+    this.minimapEnabled = options.minimap !== false;
+    this.minimapFrame = 0;
+    this.minimapDrag = null;
     this.shortcutsHelpOpen = false;
     this.autoFit = Boolean(options.autoFit);
     this.readyEmitted = false;
@@ -1418,6 +1426,7 @@ export class VdFlowchart {
       if (!ready) return false;
       this.readyEmitted = true;
       if (this.autoFit) this.fitView();
+      else this.scheduleMinimap();
       this.emit('ready', this);
       return true;
     };
@@ -1515,8 +1524,16 @@ export class VdFlowchart {
     this.shortcutsButton.setAttribute('aria-label', 'Keyboard shortcuts');
     this.shortcutsButton.setAttribute('aria-expanded', 'false');
 
+    this.minimapButton = createToolbarButton({
+      action: 'minimap',
+      label: 'Toggle minimap',
+      icon: 'minimap',
+    });
+    this.minimapButton.setAttribute('aria-pressed', this.minimapEnabled ? 'true' : 'false');
+
     toolbarLeft.appendChild(this.arrangeSelect);
     toolbarLeft.appendChild(this.clearButton);
+    toolbarRight.appendChild(this.minimapButton);
     toolbarRight.appendChild(this.shortcutsButton);
     toolbarRight.appendChild(this.zoomLabel);
     this.toolbar.appendChild(toolbarLeft);
@@ -1623,6 +1640,24 @@ export class VdFlowchart {
     this.shortcutsHelp.addEventListener('wheel', (event) => event.stopPropagation());
     this.shortcutsButton.setAttribute('aria-controls', this.shortcutsHelp.id);
     this.canvasEl.appendChild(this.shortcutsHelp);
+
+    // Pointer-only overview: keyboard users already have arrows and zoom keys.
+    this.minimapEl = createElement('div', { className: 'vd-flowchart-minimap' });
+    this.minimapEl.setAttribute('aria-hidden', 'true');
+    this.minimapEl.hidden = true;
+    this.minimapSvg = svgEl('svg', {
+      class: 'vd-flowchart-minimap-svg',
+      width: MINIMAP_WIDTH,
+      height: MINIMAP_HEIGHT,
+      viewBox: `0 0 ${MINIMAP_WIDTH} ${MINIMAP_HEIGHT}`,
+    });
+    this.minimapEl.appendChild(this.minimapSvg);
+    this.minimapEl.addEventListener('pointerdown', (event) => this.handleMinimapPointer(event));
+    this.minimapEl.addEventListener('pointermove', (event) => this.handleMinimapPointer(event));
+    this.minimapEl.addEventListener('pointerup', (event) => this.endMinimapDrag(event));
+    this.minimapEl.addEventListener('pointercancel', (event) => this.endMinimapDrag(event));
+    this.minimapEl.addEventListener('wheel', (event) => event.stopPropagation());
+    this.canvasEl.appendChild(this.minimapEl);
 
     this.inspectorPanel = createElement('aside', {
       className: 'vd-flowchart-panel vd-flowchart-panel--inspector',
@@ -1887,6 +1922,140 @@ export class VdFlowchart {
     if (action === 'redo') this.redo();
     if (action === 'clear' && !this.readonly) this.clear();
     if (action === 'shortcuts') this.toggleShortcutsHelp();
+    if (action === 'minimap') this.setMinimapEnabled(!this.minimapEnabled);
+  }
+
+  setMinimapEnabled(enabled) {
+    this.minimapEnabled = Boolean(enabled);
+    this.minimapButton.setAttribute('aria-pressed', this.minimapEnabled ? 'true' : 'false');
+    this.drawMinimap();
+    return this;
+  }
+
+  scheduleMinimap() {
+    if (this.minimapFrame || !hasWindow()) return;
+    const raf =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : (callback) => setTimeout(callback, 16);
+    this.minimapFrame = raf(() => {
+      this.minimapFrame = 0;
+      this.drawMinimap();
+    });
+  }
+
+  // World-to-minimap mapping covering every visible node and the viewport.
+  getMinimapTransform() {
+    const viewport = this.documentData.viewport;
+    const width = this.canvasEl.clientWidth;
+    const height = this.canvasEl.clientHeight;
+    const view = {
+      left: -viewport.x / viewport.scale,
+      top: -viewport.y / viewport.scale,
+      right: (width - viewport.x) / viewport.scale,
+      bottom: (height - viewport.y) / viewport.scale,
+    };
+    const content = getBounds(this.getVisibleNodes());
+    const left = Math.min(content.left, view.left);
+    const top = Math.min(content.top, view.top);
+    const spanX = Math.max(1, Math.max(content.right, view.right) - left);
+    const spanY = Math.max(1, Math.max(content.bottom, view.bottom) - top);
+    const padding = 8;
+    const scale = Math.min(
+      (MINIMAP_WIDTH - padding * 2) / spanX,
+      (MINIMAP_HEIGHT - padding * 2) / spanY,
+    );
+    return {
+      scale,
+      offsetX: (MINIMAP_WIDTH - spanX * scale) / 2 - left * scale,
+      offsetY: (MINIMAP_HEIGHT - spanY * scale) / 2 - top * scale,
+      view,
+    };
+  }
+
+  drawMinimap() {
+    if (this.destroyed || !this.minimapEl) return;
+    const nodes = this.getVisibleNodes();
+    const visible =
+      this.minimapEnabled &&
+      nodes.length > 0 &&
+      this.canvasEl.clientWidth >= MINIMAP_MIN_CANVAS_WIDTH;
+    this.minimapEl.hidden = !visible;
+    if (!visible) return;
+
+    const transform = this.minimapDrag?.transform || this.getMinimapTransform();
+    const view = this.getMinimapTransform().view;
+    const map = (x, y) => ({
+      x: formatNumber(x * transform.scale + transform.offsetX),
+      y: formatNumber(y * transform.scale + transform.offsetY),
+    });
+    clearChildren(this.minimapSvg);
+    nodes.forEach((node) => {
+      const point = map(node.x, node.y);
+      const selected = this.selection?.kind === 'node' && this.selection.id === node.id;
+      this.minimapSvg.appendChild(
+        svgEl('rect', {
+          class: `vd-flowchart-minimap-node${selected ? ' is-selected' : ''}`,
+          x: point.x,
+          y: point.y,
+          width: formatNumber(Math.max(1.5, node.width * transform.scale)),
+          height: formatNumber(Math.max(1.5, node.height * transform.scale)),
+          rx: 1.5,
+        }),
+      );
+    });
+    const corner = map(view.left, view.top);
+    this.minimapSvg.appendChild(
+      svgEl('rect', {
+        class: 'vd-flowchart-minimap-viewport',
+        x: corner.x,
+        y: corner.y,
+        width: formatNumber((view.right - view.left) * transform.scale),
+        height: formatNumber((view.bottom - view.top) * transform.scale),
+      }),
+    );
+  }
+
+  // Centre the main view on the world point under the minimap pointer. The
+  // mapping is frozen for the whole drag so the map does not shift under it.
+  handleMinimapPointer(event) {
+    event.stopPropagation();
+    if (event.type === 'pointerdown') {
+      if (event.button != null && event.button !== 0) return;
+      event.preventDefault();
+      this.minimapDrag = { pointerId: event.pointerId, transform: this.getMinimapTransform() };
+      try {
+        this.minimapEl.setPointerCapture?.(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!this.minimapDrag || this.minimapDrag.pointerId !== event.pointerId) return;
+    const rect = this.minimapEl.getBoundingClientRect();
+    const { transform } = this.minimapDrag;
+    this.centerViewOn(
+      (event.clientX - rect.left - transform.offsetX) / transform.scale,
+      (event.clientY - rect.top - transform.offsetY) / transform.scale,
+    );
+  }
+
+  endMinimapDrag(event) {
+    event.stopPropagation();
+    if (!this.minimapDrag || this.minimapDrag.pointerId !== event.pointerId) return;
+    this.minimapDrag = null;
+    this.syncJsonTextarea();
+    this.emitViewportChange('viewport:pan');
+    this.drawMinimap();
+  }
+
+  centerViewOn(worldX, worldY) {
+    const viewport = this.documentData.viewport;
+    const width = this.canvasEl.clientWidth || 800;
+    const height = this.canvasEl.clientHeight || 560;
+    viewport.x = formatNumber(width / 2 - worldX * viewport.scale);
+    viewport.y = formatNumber(height / 2 - worldY * viewport.scale);
+    this.render({ inspector: false, json: false });
+    return this;
   }
 
   toggleShortcutsHelp(force) {
@@ -3342,6 +3511,7 @@ export class VdFlowchart {
     this.updateToolbarLabel();
     this.updatePaletteState();
     this.positionTextEditor();
+    this.scheduleMinimap();
   }
 
   renderScene() {
@@ -4829,6 +4999,7 @@ export class VdFlowchart {
       this.keyboardShortcuts = normalizeKeyboardShortcuts(options.keyboardShortcuts);
     }
     if ('snapGuides' in options) this.snapGuides = options.snapGuides !== false;
+    if ('minimap' in options) this.setMinimapEnabled(options.minimap !== false);
     this.syncCanvasLabel();
     if (this.shortcutsHelpOpen) this.renderShortcutsHelp();
     if ('history' in options && (options.history !== false) !== this.historyEnabled) {
@@ -4882,6 +5053,10 @@ export class VdFlowchart {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    if (this.minimapFrame && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.minimapFrame);
+    }
+    this.minimapFrame = 0;
     this.activeTool = null;
     this.stopTextEdit({ commit: false });
     this.resizeObserver?.disconnect();

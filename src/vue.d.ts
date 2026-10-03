@@ -37,6 +37,8 @@ export interface VdFlowchartProps {
   keyboardShortcuts?: FlowchartKeyboardShortcuts;
   /** Snap dragged nodes to alignment guides; Alt bypasses (default true). */
   snapGuides?: boolean;
+  /** Show the overview minimap (default true). */
+  minimap?: boolean;
 }
 
 export interface VdFlowchartEmits {
