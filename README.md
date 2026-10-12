@@ -169,9 +169,11 @@ pnpm test:e2e      # Playwright Chromium (needs dist/)
 `pnpm build` first**. Chromium must be installed once:
 `pnpm exec playwright install chromium`.
 
-The published package declares a consumer-friendly `engines.node >=20.19.0`;
-the dev/CI toolchain pins Node 24 via `packageManager` +
-`.github/workflows/ci.yml`.
+Node 24 LTS is the supported development and CI runtime; run `nvm use` to select
+it for this repository from `.nvmrc`. The existing `engines.node >=20.19.0`
+range remains a temporary consumer compatibility floor, tested on a best-effort
+basis until the next major release; it is not the recommended development
+runtime.
 
 ## Documentation
 
