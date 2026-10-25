@@ -19,6 +19,8 @@ boundary and SHALL NOT render side-midpoint resize handles.
 
 ### Requirement: Clicking a connection handle adds a connected node
 
+A click on a connection handle that stays within the drag threshold SHALL add a connected node in that direction, select it, and open its label. One undo SHALL remove both the node and its edge.
+
 #### Scenario: Click without dragging
 
 - **Given** an editable editor with a selected node
@@ -51,6 +53,8 @@ Cmd/Ctrl+D to duplicate, Escape to step back, and zoom keys.
 - **Then** no node MUST be added and Enter MUST open the label editor
 
 ### Requirement: Document format unchanged
+
+This change SHALL NOT change the serialized document format. A 1.2.0 or older 1.x document MUST load, and `toJSON()` MUST write version `1.2.0`.
 
 #### Scenario: Existing documents
 

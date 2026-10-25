@@ -74,11 +74,12 @@ function createToolbarButton({ action, label, icon, disabled = false }) {
   return button;
 }
 const DEFAULT_GRID_SIZE = 24;
-const MIN_SCALE = 0.35;
-const MAX_SCALE = 3;
-const MIN_NODE_SIZE = 56;
-const MAX_NODE_SIZE = 420;
-const WORLD_EXTENT = 12000;
+const DEFAULT_MIN_SCALE = 0.35;
+const DEFAULT_MAX_SCALE = 3;
+const DEFAULT_MIN_NODE_SIZE = 56;
+const DEFAULT_MAX_NODE_SIZE = 420;
+const DEFAULT_WORLD_EXTENT = 12000;
+const WIDE_WORLD_EXTENT = 240000;
 // Bounded deserialization caps. An untrusted or corrupt document (e.g. a shared
 // link with millions of nodes/edges) is TRUNCATED — never thrown — inside
 // normalizeDocument, so `load()` cannot be turned into a client-side DoS: the
@@ -123,7 +124,7 @@ const EDGE_STROKE_PRESETS = [
   { id: 'bold', label: 'Bold', width: 3.5 },
 ];
 
-export const VD_FLOWCHART_VERSION = '1.4.0';
+export const VD_FLOWCHART_VERSION = '1.5.0';
 /** Serialized schema version; change only when the document format changes. */
 export const FLOWCHART_DOCUMENT_VERSION = '1.3.0';
 export const FLOWCHART_NODE_TYPES = [
@@ -290,6 +291,19 @@ function formatNumber(value) {
   return Number(value.toFixed(2));
 }
 
+function formatScale(value) {
+  return Number(toFiniteNumber(value, 1).toFixed(4));
+}
+
+function normalizeBoundPair(min, max, fallbackMin, fallbackMax) {
+  const low = Number(min);
+  const high = Number(max);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || low <= 0 || high <= 0 || low >= high) {
+    return { min: fallbackMin, max: fallbackMax };
+  }
+  return { min: low, max: high };
+}
+
 function sanitizeId(value) {
   if (value == null) return '';
   return String(value).trim();
@@ -355,23 +369,40 @@ function getNodeSpec(type) {
   return DEFAULT_NODE_SPECS[normalizeNodeType(type)];
 }
 
-function getNodeSizeBounds(type) {
+function nodeVisualScale(node) {
+  if (!node || node.type === 'junction') return 1;
+  const spec = getNodeSpec(node.type);
+  const width = spec.width > 0 ? toFiniteNumber(node.width, spec.width) / spec.width : 1;
+  const height = spec.height > 0 ? toFiniteNumber(node.height, spec.height) / spec.height : 1;
+  return clamp(Math.min(1, width, height), 0.01, 1);
+}
+
+function edgeVisualScale(fromNode, toNode) {
+  if (fromNode && toNode) return Math.min(nodeVisualScale(fromNode), nodeVisualScale(toNode));
+  if (fromNode) return nodeVisualScale(fromNode);
+  if (toNode) return nodeVisualScale(toNode);
+  return 1;
+}
+
+function getNodeSizeBounds(type, sizeBounds) {
   const spec = getNodeSpec(type);
+  const min = sizeBounds?.min ?? DEFAULT_MIN_NODE_SIZE;
+  const max = sizeBounds?.max ?? DEFAULT_MAX_NODE_SIZE;
   return {
-    minWidth: spec.minWidth ?? MIN_NODE_SIZE,
-    minHeight: spec.minHeight ?? MIN_NODE_SIZE,
-    maxWidth: spec.maxWidth ?? MAX_NODE_SIZE,
-    maxHeight: spec.maxHeight ?? MAX_NODE_SIZE,
+    minWidth: spec.minWidth ?? min,
+    minHeight: spec.minHeight ?? min,
+    maxWidth: spec.maxWidth ?? max,
+    maxHeight: spec.maxHeight ?? max,
   };
 }
 
-function clampNodeWidth(type, width, fallback) {
-  const bounds = getNodeSizeBounds(type);
+function clampNodeWidth(type, width, fallback, sizeBounds) {
+  const bounds = getNodeSizeBounds(type, sizeBounds);
   return clamp(toFiniteNumber(width, fallback), bounds.minWidth, bounds.maxWidth);
 }
 
-function clampNodeHeight(type, height, fallback) {
-  const bounds = getNodeSizeBounds(type);
+function clampNodeHeight(type, height, fallback, sizeBounds) {
+  const bounds = getNodeSizeBounds(type, sizeBounds);
   return clamp(toFiniteNumber(height, fallback), bounds.minHeight, bounds.maxHeight);
 }
 
@@ -403,15 +434,17 @@ function getStrokePresetWidth(presetId) {
   return preset?.width ?? DEFAULT_EDGE_STROKE_WIDTH;
 }
 
-function normalizeViewport(viewport) {
+function normalizeViewport(viewport, scaleBounds) {
+  const min = scaleBounds?.min ?? DEFAULT_MIN_SCALE;
+  const max = scaleBounds?.max ?? DEFAULT_MAX_SCALE;
   return {
     x: toFiniteNumber(viewport?.x, 0),
     y: toFiniteNumber(viewport?.y, 0),
-    scale: clamp(toFiniteNumber(viewport?.scale, 1), MIN_SCALE, MAX_SCALE),
+    scale: clamp(formatScale(toFiniteNumber(viewport?.scale, 1)), min, max),
   };
 }
 
-function normalizeNode(rawNode, index, usedIds) {
+function normalizeNode(rawNode, index, usedIds, sizeBounds) {
   const type = normalizeNodeType(rawNode?.type);
   const spec = getNodeSpec(type);
 
@@ -420,8 +453,8 @@ function normalizeNode(rawNode, index, usedIds) {
     type,
     x: toFiniteNumber(rawNode?.x, index * 28),
     y: toFiniteNumber(rawNode?.y, index * 18),
-    width: clampNodeWidth(type, rawNode?.width, spec.width),
-    height: clampNodeHeight(type, rawNode?.height, spec.height),
+    width: clampNodeWidth(type, rawNode?.width, spec.width, sizeBounds),
+    height: clampNodeHeight(type, rawNode?.height, spec.height, sizeBounds),
     text: rawNode?.text == null ? spec.text : String(rawNode.text),
     data: isPlainObject(rawNode?.data) ? deepClone(rawNode.data) : {},
   };
@@ -541,7 +574,7 @@ function isSupportedDocumentVersion(value) {
   return true;
 }
 
-function normalizeDocument(input) {
+function normalizeDocument(input, limits = {}) {
   let source = input;
   if (typeof source === 'string') {
     try {
@@ -570,7 +603,7 @@ function normalizeDocument(input) {
   // MAX_EDGES so a hostile doc loads bounded instead of freezing the tab.
   const nodes = (Array.isArray(source.nodes) ? source.nodes : [])
     .slice(0, MAX_NODES)
-    .map((node, index) => normalizeNode(node, index, usedNodeIds));
+    .map((node, index) => normalizeNode(node, index, usedNodeIds, limits.sizeBounds));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const usedEdgeIds = new Set();
   const edges = (Array.isArray(source.edges) ? source.edges : [])
@@ -580,7 +613,7 @@ function normalizeDocument(input) {
 
   return {
     version: FLOWCHART_DOCUMENT_VERSION,
-    viewport: normalizeViewport(source.viewport),
+    viewport: normalizeViewport(source.viewport, limits.scaleBounds),
     nodes,
     edges,
   };
@@ -865,20 +898,38 @@ function getPolylineLabelPoint(points) {
 // (1 = dead ahead, 0 = sideways, -1 = behind). Easing the arm by alignment
 // shortens it when the target sits behind the port, avoiding a ballooned loop,
 // while giving aligned endpoints a long, graceful tangent into the arrowhead.
-function curveControlPoint(point, port, target, curvature) {
+function routeMetrics(edgeScale = 1) {
+  const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
+  return {
+    scale,
+    minCurveArm: MIN_CURVE_ARM * scale,
+    maxCurveArm: MAX_CURVE_ARM * scale,
+    stub: ORTHOGONAL_STUB_LENGTH * scale,
+    corner: ORTHOGONAL_CORNER_RADIUS * scale,
+    clearance: ORTHOGONAL_CLEARANCE * scale,
+  };
+}
+
+function curveControlPoint(point, port, target, curvature, metrics = routeMetrics(1)) {
   const normal = getPortNormal(port);
   const dx = target.x - point.x;
   const dy = target.y - point.y;
   const distance = Math.hypot(dx, dy) || 1;
   const align = (normal.x * dx + normal.y * dy) / distance;
   const ease = 0.55 + 0.45 * align;
-  const arm = clamp(distance * curvature * ease, MIN_CURVE_ARM, MAX_CURVE_ARM);
+  const arm = clamp(distance * curvature * ease, metrics.minCurveArm, metrics.maxCurveArm);
   return { x: point.x + normal.x * arm, y: point.y + normal.y * arm };
 }
 
-function buildCurvePath(fromPoint, toPoint, fromPort = 'right', toPort = 'left') {
-  const controlA = curveControlPoint(fromPoint, fromPort, toPoint, EDGE_CURVATURE);
-  const controlB = curveControlPoint(toPoint, toPort, fromPoint, EDGE_CURVATURE);
+function buildCurvePath(
+  fromPoint,
+  toPoint,
+  fromPort = 'right',
+  toPort = 'left',
+  metrics = routeMetrics(1),
+) {
+  const controlA = curveControlPoint(fromPoint, fromPort, toPoint, EDGE_CURVATURE, metrics);
+  const controlB = curveControlPoint(toPoint, toPort, fromPoint, EDGE_CURVATURE, metrics);
 
   // Cubic bezier value at t = 0.5 for an accurate on-curve label anchor.
   const labelX = 0.125 * fromPoint.x + 0.375 * controlA.x + 0.375 * controlB.x + 0.125 * toPoint.x;
@@ -966,11 +1017,19 @@ function getOrthogonalMidpoints(fromStub, toStub, fromPort, toPort) {
 // then the two stubs are bridged: directly when the ports face each other with
 // room in between, otherwise through a channel routed clear of both node rects
 // so the connector never cuts through a box (draw.io-style "around" routing).
-function getOrthogonalPoints(fromPoint, toPoint, fromPort, toPort, fromRect, toRect) {
+function getOrthogonalPoints(
+  fromPoint,
+  toPoint,
+  fromPort,
+  toPort,
+  fromRect,
+  toRect,
+  metrics = routeMetrics(1),
+) {
   const fromNormal = getPortNormal(fromPort);
   const toNormal = getPortNormal(toPort);
-  const fromStub = offsetPoint(fromPoint, fromNormal, ORTHOGONAL_STUB_LENGTH);
-  const toStub = offsetPoint(toPoint, toNormal, ORTHOGONAL_STUB_LENGTH);
+  const fromStub = offsetPoint(fromPoint, fromNormal, metrics.stub);
+  const toStub = offsetPoint(toPoint, toNormal, metrics.stub);
   const sourceHorizontal = isHorizontalPort(fromPort);
   const targetHorizontal = isHorizontalPort(toPort);
   const mids = [];
@@ -1038,13 +1097,14 @@ function buildOrthogonalPath(
   toPort = 'left',
   fromRect = null,
   toRect = null,
+  metrics = routeMetrics(1),
 ) {
   let points;
   if (fromRect && toRect) {
-    points = getOrthogonalPoints(fromPoint, toPoint, fromPort, toPort, fromRect, toRect);
+    points = getOrthogonalPoints(fromPoint, toPoint, fromPort, toPort, fromRect, toRect, metrics);
   } else {
-    const fromStub = offsetPoint(fromPoint, getPortNormal(fromPort), ORTHOGONAL_STUB_LENGTH);
-    const toStub = offsetPoint(toPoint, getPortNormal(toPort), ORTHOGONAL_STUB_LENGTH);
+    const fromStub = offsetPoint(fromPoint, getPortNormal(fromPort), metrics.stub);
+    const toStub = offsetPoint(toPoint, getPortNormal(toPort), metrics.stub);
     points = [];
     [
       fromPoint,
@@ -1057,7 +1117,7 @@ function buildOrthogonalPath(
 
   const label = getPolylineLabelPoint(points);
   return {
-    d: buildRoundedPath(points, ORTHOGONAL_CORNER_RADIUS),
+    d: buildRoundedPath(points, metrics.corner),
     labelX: label.x,
     labelY: label.y,
   };
@@ -1069,6 +1129,7 @@ function buildEdgePath(edge, fromNode = null, toNode = null) {
   const fromPoint = edge?.fromPoint || (fromNode ? getPortPosition(fromNode, fromPort) : null);
   const toPoint = edge?.toPoint || (toNode ? getPortPosition(toNode, toPort) : null);
   const route = normalizeEdgeRoute(edge?.route);
+  const metrics = routeMetrics(edgeVisualScale(fromNode, toNode));
 
   if (!fromPoint || !toPoint) {
     return { d: '', labelX: 0, labelY: 0 };
@@ -1080,18 +1141,19 @@ function buildEdgePath(edge, fromNode = null, toNode = null) {
 
   if (route === 'orthogonal') {
     const fromRect =
-      !edge?.fromPoint && fromNode ? getNodeRectBounds(fromNode, ORTHOGONAL_CLEARANCE) : null;
-    const toRect =
-      !edge?.toPoint && toNode ? getNodeRectBounds(toNode, ORTHOGONAL_CLEARANCE) : null;
-    return buildOrthogonalPath(fromPoint, toPoint, fromPort, toPort, fromRect, toRect);
+      !edge?.fromPoint && fromNode ? getNodeRectBounds(fromNode, metrics.clearance) : null;
+    const toRect = !edge?.toPoint && toNode ? getNodeRectBounds(toNode, metrics.clearance) : null;
+    return buildOrthogonalPath(fromPoint, toPoint, fromPort, toPort, fromRect, toRect, metrics);
   }
 
-  return buildCurvePath(fromPoint, toPoint, fromPort, toPort);
+  return buildCurvePath(fromPoint, toPoint, fromPort, toPort, metrics);
 }
 
-function createArrowMarker(id, strokeWidth, reversed = false) {
-  const size = formatNumber(Math.max(9, strokeWidth * 4.4));
-  const refInset = formatNumber(Math.max(1.5, strokeWidth * 0.85));
+function createArrowMarker(id, strokeWidth, reversed = false, edgeScale = 1) {
+  const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
+  const effective = Math.max(0.02, strokeWidth * scale);
+  const size = formatNumber(Math.max(9 * scale, effective * 4.4));
+  const refInset = formatNumber(Math.max(1.5 * scale, effective * 0.85));
   const marker = svgEl('marker', {
     id,
     markerWidth: size,
@@ -1112,9 +1174,11 @@ function createArrowMarker(id, strokeWidth, reversed = false) {
   return marker;
 }
 
-function createDotMarker(id, strokeWidth) {
-  const size = formatNumber(Math.max(8, strokeWidth * 3.3));
-  const radius = formatNumber(Math.max(2.75, strokeWidth * 1.45));
+function createDotMarker(id, strokeWidth, edgeScale = 1) {
+  const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
+  const effective = Math.max(0.02, strokeWidth * scale);
+  const size = formatNumber(Math.max(8 * scale, effective * 3.3));
+  const radius = formatNumber(Math.max(2.75 * scale, effective * 1.45));
   const marker = svgEl('marker', {
     id,
     markerWidth: size,
@@ -1398,7 +1462,23 @@ export class VdFlowchart {
     this.element = resolveElement(options.element || options.target);
     this.readonly = Boolean(options.readonly);
     this.gridSize = clamp(toFiniteNumber(options.gridSize, DEFAULT_GRID_SIZE), 12, 64);
-    this.documentData = normalizeDocument(options.data || {});
+    const scaleBounds = normalizeBoundPair(
+      options.minScale,
+      options.maxScale,
+      DEFAULT_MIN_SCALE,
+      DEFAULT_MAX_SCALE,
+    );
+    const sizeBounds = normalizeBoundPair(
+      options.minNodeSize,
+      options.maxNodeSize,
+      DEFAULT_MIN_NODE_SIZE,
+      DEFAULT_MAX_NODE_SIZE,
+    );
+    this.minScale = scaleBounds.min;
+    this.maxScale = scaleBounds.max;
+    this.minNodeSize = sizeBounds.min;
+    this.maxNodeSize = sizeBounds.max;
+    this.documentData = normalizeDocument(options.data || {}, { scaleBounds, sizeBounds });
     this.listeners = {};
     this.selection = null;
     this.selectedNodeIds = new Set();
@@ -1658,10 +1738,10 @@ export class VdFlowchart {
     this.world = svgEl('g', { class: 'vd-flowchart-world' });
     this.gridRect = svgEl('rect', {
       class: 'vd-flowchart-grid',
-      x: -WORLD_EXTENT / 2,
-      y: -WORLD_EXTENT / 2,
-      width: WORLD_EXTENT,
-      height: WORLD_EXTENT,
+      x: -DEFAULT_WORLD_EXTENT / 2,
+      y: -DEFAULT_WORLD_EXTENT / 2,
+      width: DEFAULT_WORLD_EXTENT,
+      height: DEFAULT_WORLD_EXTENT,
       fill: `url(#${this.gridPatternId})`,
     });
     this.edgesLayer = svgEl('g', { class: 'vd-flowchart-edges' });
@@ -2554,7 +2634,7 @@ export class VdFlowchart {
     const width = this.canvasEl.clientWidth || 800;
     const height = this.canvasEl.clientHeight || 560;
     this.scaleAround(
-      clamp(scale, MIN_SCALE, MAX_SCALE) / viewport.scale,
+      clamp(formatScale(scale), this.minScale, this.maxScale) / viewport.scale,
       width / 2,
       height / 2,
       'viewport:zoom',
@@ -2593,6 +2673,7 @@ export class VdFlowchart {
         { ...data, id: undefined, x: data.x + 24, y: data.y + 24 },
         this.documentData.nodes.length + index,
         usedNodeIds,
+        this.nodeSizeBounds(),
       );
       idMap.set(data.id, node.id);
       return node;
@@ -2627,6 +2708,7 @@ export class VdFlowchart {
       { ...data, id: undefined, collapsed: undefined, x: data.x + 24, y: data.y + 24 },
       this.documentData.nodes.length,
       usedIds,
+      this.nodeSizeBounds(),
     );
     this.documentData.nodes.push(node);
     this.select({ kind: 'node', id: node.id });
@@ -3346,9 +3428,10 @@ export class VdFlowchart {
     );
   }
 
-  getMarkerId(markerType, position, strokeWidth) {
+  getMarkerId(markerType, position, strokeWidth, edgeScale = 1) {
     const width = normalizeEdgeStrokeWidth(strokeWidth);
-    const key = `${markerType}:${position}:${width}`;
+    const scale = clamp(formatScale(edgeScale), 0.01, 1);
+    const key = `${markerType}:${position}:${width}:${scale}`;
     if (this.markerIds.has(key)) {
       return this.markerIds.get(key);
     }
@@ -3356,8 +3439,8 @@ export class VdFlowchart {
     const markerId = nextId(`flowchart-${markerType}-${position}`);
     const marker =
       markerType === 'dot'
-        ? createDotMarker(markerId, width)
-        : createArrowMarker(markerId, width, position === 'start');
+        ? createDotMarker(markerId, width, scale)
+        : createArrowMarker(markerId, width, position === 'start', scale);
     this.markerDefs.appendChild(marker);
     this.markerIds.set(key, markerId);
     return markerId;
@@ -3367,8 +3450,15 @@ export class VdFlowchart {
     return normalizeEdgeStrokeWidth(edge?.strokeWidth);
   }
 
-  getEdgeHitStrokeWidth(edge) {
-    return formatNumber(Math.max(EDGE_HIT_STROKE_MIN, this.getEdgeStrokeWidth(edge) + 12));
+  getEdgeHitStrokeWidth(edge, edgeScale = 1) {
+    const visual = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
+    const base = this.getEdgeStrokeWidth(edge);
+    const view = Math.max(this.documentData?.viewport?.scale || 1, 0.0001);
+    const legacy = Math.max(EDGE_HIT_STROKE_MIN, base + 12);
+    if (visual >= 0.999 && view >= DEFAULT_MIN_SCALE && view <= DEFAULT_MAX_SCALE) {
+      return formatNumber(legacy);
+    }
+    return formatNumber(Math.max(base * visual, EDGE_HIT_STROKE_MIN / view));
   }
 
   findConnectionTarget(worldPoint, excludeNodeId, previousSnap = null, referencePoint = null) {
@@ -3438,17 +3528,37 @@ export class VdFlowchart {
     let height = original.height;
 
     if (handle.includes('e')) {
-      width = clampNodeWidth(nextType, original.width + deltaX, original.width);
+      width = clampNodeWidth(
+        nextType,
+        original.width + deltaX,
+        original.width,
+        this.nodeSizeBounds(),
+      );
     }
     if (handle.includes('s')) {
-      height = clampNodeHeight(nextType, original.height + deltaY, original.height);
+      height = clampNodeHeight(
+        nextType,
+        original.height + deltaY,
+        original.height,
+        this.nodeSizeBounds(),
+      );
     }
     if (handle.includes('w')) {
-      width = clampNodeWidth(nextType, original.width - deltaX, original.width);
+      width = clampNodeWidth(
+        nextType,
+        original.width - deltaX,
+        original.width,
+        this.nodeSizeBounds(),
+      );
       x = original.x + original.width - width;
     }
     if (handle.includes('n')) {
-      height = clampNodeHeight(nextType, original.height - deltaY, original.height);
+      height = clampNodeHeight(
+        nextType,
+        original.height - deltaY,
+        original.height,
+        this.nodeSizeBounds(),
+      );
       y = original.y + original.height - height;
     }
 
@@ -3490,7 +3600,7 @@ export class VdFlowchart {
   scaleAround(factor, localX, localY, reason) {
     const viewport = this.documentData.viewport;
     const anchor = this.localToWorld(localX, localY);
-    const nextScale = clamp(formatNumber(viewport.scale * factor), MIN_SCALE, MAX_SCALE);
+    const nextScale = clamp(formatScale(viewport.scale * factor), this.minScale, this.maxScale);
     if (nextScale === viewport.scale) return;
 
     viewport.scale = nextScale;
@@ -3698,21 +3808,24 @@ export class VdFlowchart {
 
     const viewport = this.documentData.viewport;
     const scale = viewport.scale;
+    const visual = nodeVisualScale(node);
     const textarea = this.textEditor.textarea;
     const width = node.width * scale;
     const height = node.height * scale;
     const metrics = getNodeFontMetrics(node);
-    const lineHeight = metrics.lineHeight * scale;
+    const lineHeight = metrics.lineHeight * visual * scale;
     const lineCount = Math.max(1, textarea.value.split(/\r?\n/).length);
-    const horizontalPadding = (node.type === 'textbox' ? 16 : 12) * scale;
+    const horizontalPadding = (node.type === 'textbox' ? 16 : 12) * visual * scale;
     const verticalPadding =
-      node.type === 'textbox' ? 12 * scale : Math.max(4, (height - lineCount * lineHeight) / 2);
+      node.type === 'textbox'
+        ? 12 * visual * scale
+        : Math.max(4 * visual, (height - lineCount * lineHeight) / 2);
 
     textarea.style.left = `${formatNumber(viewport.x + node.x * scale)}px`;
     textarea.style.top = `${formatNumber(viewport.y + node.y * scale)}px`;
     textarea.style.width = `${formatNumber(width)}px`;
     textarea.style.height = `${formatNumber(height)}px`;
-    textarea.style.fontSize = `${formatNumber(metrics.fontSize * scale)}px`;
+    textarea.style.fontSize = `${formatNumber(metrics.fontSize * visual * scale)}px`;
     textarea.style.lineHeight = `${formatNumber(lineHeight)}px`;
     textarea.style.padding = `${formatNumber(verticalPadding)}px ${formatNumber(horizontalPadding)}px`;
   }
@@ -3725,14 +3838,16 @@ export class VdFlowchart {
       this.stopTextEdit({ commit: false });
       return;
     }
+    const visual = edgeVisualScale(fromNode, toNode);
     const { labelX, labelY } = buildEdgePath(edge, fromNode, toNode);
     const viewport = this.documentData.viewport;
     const textarea = this.textEditor.textarea;
-    const fontSize = Math.max(11, 13 * viewport.scale);
-    const width = clamp(textarea.value.length * fontSize * 0.62 + 28, 96, 280);
-    const height = fontSize * 1.4 + 12;
+    const fontSize = Math.max(11 * visual, 13 * visual * viewport.scale);
+    const width = clamp(textarea.value.length * fontSize * 0.62 + 28 * visual, 96 * visual, 280);
+    const height = fontSize * 1.4 + 12 * visual;
+    const labelOffset = 8 * visual;
     textarea.style.left = `${formatNumber(viewport.x + labelX * viewport.scale - width / 2)}px`;
-    textarea.style.top = `${formatNumber(viewport.y + (labelY - 8) * viewport.scale - height / 2)}px`;
+    textarea.style.top = `${formatNumber(viewport.y + (labelY - labelOffset) * viewport.scale - height / 2)}px`;
     textarea.style.width = `${formatNumber(width)}px`;
     textarea.style.height = `${formatNumber(height)}px`;
     textarea.style.fontSize = `${formatNumber(fontSize)}px`;
@@ -3742,6 +3857,7 @@ export class VdFlowchart {
 
   render(options = {}) {
     if (this.destroyed) return;
+    this.syncGrid();
 
     const shouldRenderScene = options.scene !== false;
     const shouldRenderInspector = options.inspector !== false;
@@ -3840,17 +3956,18 @@ export class VdFlowchart {
     }
   }
 
-  applyEdgeMarkers(pathElement, edge) {
+  applyEdgeMarkers(pathElement, edge, edgeScale = 1) {
+    const width = this.getEdgeStrokeWidth(edge);
     if (edge.startMarker && edge.startMarker !== 'none') {
       pathElement.setAttribute(
         'marker-start',
-        `url(#${this.getMarkerId(edge.startMarker, 'start', this.getEdgeStrokeWidth(edge))})`,
+        `url(#${this.getMarkerId(edge.startMarker, 'start', width, edgeScale)})`,
       );
     }
     if (edge.endMarker && edge.endMarker !== 'none') {
       pathElement.setAttribute(
         'marker-end',
-        `url(#${this.getMarkerId(edge.endMarker, 'end', this.getEdgeStrokeWidth(edge))})`,
+        `url(#${this.getMarkerId(edge.endMarker, 'end', width, edgeScale)})`,
       );
     }
   }
@@ -3860,6 +3977,7 @@ export class VdFlowchart {
     const toNode = nodeMap.get(edge.to.nodeId);
     if (!fromNode || !toNode) return null;
 
+    const visual = edgeVisualScale(fromNode, toNode);
     const edgePath = buildEdgePath(edge, fromNode, toNode);
     const selected = this.selection?.kind === 'edge' && this.selection.id === edge.id;
     const inReconnectMode = this.reconnectEdgeId === edge.id;
@@ -3868,14 +3986,19 @@ export class VdFlowchart {
       class: `vd-flowchart-edge${selected ? ' is-selected' : ''}${inReconnectMode ? ' is-reconnecting' : ''}`,
       'data-edge-id': edge.id,
     });
-    const strokeWidth = this.getEdgeStrokeWidth(edge);
+    const baseStroke = this.getEdgeStrokeWidth(edge);
+    const strokeWidth =
+      visual < 0.999 ? formatNumber(Math.max(0.02, baseStroke * visual)) : baseStroke;
 
     if (selected) {
       group.appendChild(
         svgEl('path', {
           class: 'vd-flowchart-edge-selection',
           d: edgePath.d,
-          'stroke-width': formatNumber(strokeWidth + 7),
+          'stroke-width':
+            visual < 0.999
+              ? formatNumber((baseStroke + 7) * visual)
+              : formatNumber(strokeWidth + 7),
         }),
       );
     }
@@ -3886,12 +4009,12 @@ export class VdFlowchart {
       'stroke-width': strokeWidth,
       'data-edge-id': edge.id,
     });
-    this.applyEdgeMarkers(visiblePath, edge);
+    this.applyEdgeMarkers(visiblePath, edge, visual);
 
     const hitPath = svgEl('path', {
       class: 'vd-flowchart-edge-hit',
       d: edgePath.d,
-      'stroke-width': this.getEdgeHitStrokeWidth(edge),
+      'stroke-width': this.getEdgeHitStrokeWidth(edge, visual),
       'data-edge-id': edge.id,
     });
 
@@ -3899,13 +4022,18 @@ export class VdFlowchart {
     group.appendChild(hitPath);
 
     if (edge.label && this.textEditor?.edgeId !== edge.id) {
+      const labelOffset = visual < 0.999 ? formatNumber(8 * visual) : 8;
       const label = svgEl('text', {
         class: 'vd-flowchart-edge-label',
         x: edgePath.labelX,
-        y: edgePath.labelY - 8,
+        y: edgePath.labelY - labelOffset,
         'text-anchor': 'middle',
         'data-edge-id': edge.id,
       });
+      if (visual < 0.999) {
+        label.style.fontSize = `${formatNumber(Math.max(0.06, 12 * visual))}px`;
+        label.style.strokeWidth = `${formatNumber(Math.max(0.03, 5 * visual))}px`;
+      }
       label.textContent = edge.label;
       group.appendChild(label);
     }
@@ -3947,18 +4075,27 @@ export class VdFlowchart {
   renderPreviewEdge(interaction) {
     const fromPort = interaction.fromPort || interaction.source?.port || 'right';
     const toPort = interaction.toPort || interaction.target?.port || 'left';
-    const edgePath = buildEdgePath({
-      strokeWidth: interaction.strokeWidth,
-      route: interaction.route,
-      fromPoint: interaction.fromPoint,
-      toPoint: interaction.toPoint,
-      from: { port: fromPort },
-      to: { port: toPort },
-    });
+    const fromNode = interaction.source?.nodeId ? this.findNode(interaction.source.nodeId) : null;
+    const toNode = interaction.target?.nodeId ? this.findNode(interaction.target.nodeId) : null;
+    const visual = edgeVisualScale(fromNode, toNode);
+    const edgePath = buildEdgePath(
+      {
+        strokeWidth: interaction.strokeWidth,
+        route: interaction.route,
+        fromPoint: interaction.fromPoint,
+        toPoint: interaction.toPoint,
+        from: { port: fromPort },
+        to: { port: toPort },
+      },
+      fromNode,
+      toNode,
+    );
+    const baseStroke = this.getEdgeStrokeWidth(interaction);
     return svgEl('path', {
       class: 'vd-flowchart-preview-path',
       d: edgePath.d,
-      'stroke-width': this.getEdgeStrokeWidth(interaction),
+      'stroke-width':
+        visual < 0.999 ? formatNumber(Math.max(0.02, baseStroke * visual)) : baseStroke,
     });
   }
 
@@ -3978,22 +4115,26 @@ export class VdFlowchart {
     });
     const portsVisible = this.shouldShowNodePorts(node);
 
+    const visual = nodeVisualScale(node);
+    const corner =
+      node.type === 'rounded-rect' || node.type === 'textbox'
+        ? 16
+        : node.type === 'junction'
+          ? node.width / 2
+          : 6;
     const hitbox = svgEl('rect', {
       x: 0,
       y: 0,
       width: node.width,
       height: node.height,
-      rx:
-        node.type === 'rounded-rect' || node.type === 'textbox'
-          ? 16
-          : node.type === 'junction'
-            ? node.width / 2
-            : 6,
+      rx: visual < 0.999 && node.type !== 'junction' ? formatNumber(corner * visual) : corner,
       fill: 'transparent',
       'data-node-id': node.id,
     });
     group.appendChild(hitbox);
-    group.appendChild(this.renderNodeShape(node));
+    const shape = this.renderNodeShape(node);
+    this.applyScaledNodeShape(node, shape);
+    group.appendChild(shape);
     group.appendChild(this.renderNodeText(node));
 
     const scale = this.documentData.viewport.scale || 1;
@@ -4206,6 +4347,29 @@ export class VdFlowchart {
     return group;
   }
 
+  applyScaledNodeShape(node, shape) {
+    const visual = nodeVisualScale(node);
+    if (!shape || visual >= 0.999) return;
+    const baseStroke = node.type === 'junction' ? 1.25 : 1.5;
+    shape.style.strokeWidth = String(formatNumber(Math.max(0.03, baseStroke * visual)));
+    if (node.type === 'textbox') {
+      shape.style.strokeDasharray = `${formatNumber(8 * visual)} ${formatNumber(5 * visual)}`;
+    }
+    const baseRadius =
+      node.type === 'rounded-rect'
+        ? 18
+        : node.type === 'textbox'
+          ? 14
+          : node.type === 'rect'
+            ? 2
+            : 0;
+    if (baseRadius > 0) {
+      const scaled = String(formatNumber(baseRadius * visual));
+      shape.setAttribute('rx', scaled);
+      shape.setAttribute('ry', scaled);
+    }
+  }
+
   renderNodeShape(node) {
     const baseClass = `vd-flowchart-node-shape vd-flowchart-node-shape--${node.type}`;
 
@@ -4292,13 +4456,26 @@ export class VdFlowchart {
       return textElement;
     }
 
+    const visual = nodeVisualScale(node);
+    const metrics = getNodeFontMetrics(node);
+    const lineHeight =
+      visual < 0.999 ? Math.max(0.06, metrics.lineHeight * visual) : metrics.lineHeight;
+    if (visual < 0.999) {
+      textElement.style.fontSize = `${formatNumber(Math.max(0.05, metrics.fontSize * visual))}px`;
+    }
+    const equivalentWidth = visual < 0.999 ? node.width / visual : node.width;
+
     if (node.type === 'textbox') {
-      const lines = wrapText(node.text, estimateChars(node.width - 32));
-      const { lineHeight } = getNodeFontMetrics(node);
+      const lines = wrapText(node.text, estimateChars(equivalentWidth - 32));
+      const padX = visual < 0.999 ? formatNumber(16 * visual) : 16;
+      const startY = visual < 0.999 ? formatNumber(28 * visual) : 28;
       lines.forEach((line, index) => {
         const span = svgEl('tspan', {
-          x: 16,
-          y: 28 + index * lineHeight,
+          x: padX,
+          y:
+            visual < 0.999
+              ? formatNumber(startY + index * lineHeight)
+              : startY + index * lineHeight,
         });
         span.textContent = line;
         textElement.appendChild(span);
@@ -4306,8 +4483,7 @@ export class VdFlowchart {
       return textElement;
     }
 
-    const lines = wrapText(node.text, estimateChars(node.width));
-    const { lineHeight } = getNodeFontMetrics(node);
+    const lines = wrapText(node.text, estimateChars(equivalentWidth));
     const totalHeight = (lines.length - 1) * lineHeight;
     const startY = node.height / 2 - totalHeight / 2;
     textElement.setAttribute('text-anchor', 'middle');
@@ -4315,7 +4491,7 @@ export class VdFlowchart {
     lines.forEach((line, index) => {
       const span = svgEl('tspan', {
         x: node.width / 2,
-        y: startY + index * lineHeight,
+        y: visual < 0.999 ? formatNumber(startY + index * lineHeight) : startY + index * lineHeight,
         'text-anchor': 'middle',
         'dominant-baseline': 'middle',
       });
@@ -4375,13 +4551,13 @@ export class VdFlowchart {
 
       const widthInput = createElement('input', { value: node.width, type: 'number' });
       widthInput.setAttribute('data-field', 'node-width');
-      widthInput.setAttribute('min', String(MIN_NODE_SIZE));
-      widthInput.setAttribute('max', String(MAX_NODE_SIZE));
+      widthInput.setAttribute('min', String(this.minNodeSize));
+      widthInput.setAttribute('max', String(this.maxNodeSize));
 
       const heightInput = createElement('input', { value: node.height, type: 'number' });
       heightInput.setAttribute('data-field', 'node-height');
-      heightInput.setAttribute('min', String(MIN_NODE_SIZE));
-      heightInput.setAttribute('max', String(MAX_NODE_SIZE));
+      heightInput.setAttribute('min', String(this.minNodeSize));
+      heightInput.setAttribute('max', String(this.maxNodeSize));
 
       this.selectionFields.appendChild(createField('Type', typeSelect));
       if (isNodeTextEditable(node)) {
@@ -4761,8 +4937,8 @@ export class VdFlowchart {
     // Preserve the current camera so undo/redo never makes the view jump.
     const currentViewport = deepClone(this.documentData.viewport);
     const previousSelection = this.selection;
-    this.documentData = normalizeDocument(snapshot);
-    this.documentData.viewport = normalizeViewport(currentViewport);
+    this.documentData = normalizeDocument(snapshot, this.normalizationLimits());
+    this.documentData.viewport = normalizeViewport(currentViewport, this.scaleBounds());
     this.selection = this.resolvePreservedSelection(previousSelection, true);
     this.render();
     this.emitChange(reason);
@@ -4857,6 +5033,7 @@ export class VdFlowchart {
       },
       this.documentData.nodes.length,
       usedIds,
+      this.nodeSizeBounds(),
     );
 
     this.documentData.nodes.push(node);
@@ -5151,8 +5328,8 @@ export class VdFlowchart {
         : String(patch.text)
       : getNodeSpec(nextType).text;
 
-    node.width = clampNodeWidth(nextType, patch.width, node.width);
-    node.height = clampNodeHeight(nextType, patch.height, node.height);
+    node.width = clampNodeWidth(nextType, patch.width, node.width, this.nodeSizeBounds());
+    node.height = clampNodeHeight(nextType, patch.height, node.height, this.nodeSizeBounds());
 
     if (isPlainObject(patch.data)) {
       node.data = deepClone(patch.data);
@@ -5373,8 +5550,50 @@ export class VdFlowchart {
     return this.removeEdge(this.selection.id);
   }
 
+  nodeSizeBounds() {
+    return { min: this.minNodeSize, max: this.maxNodeSize };
+  }
+
+  scaleBounds() {
+    return { min: this.minScale, max: this.maxScale };
+  }
+
+  normalizationLimits() {
+    return { scaleBounds: this.scaleBounds(), sizeBounds: this.nodeSizeBounds() };
+  }
+
+  hasWideCamera() {
+    return this.minScale < DEFAULT_MIN_SCALE || this.maxScale > DEFAULT_MAX_SCALE;
+  }
+
+  syncGrid() {
+    const wide = this.hasWideCamera();
+    const extent = wide ? WIDE_WORLD_EXTENT : DEFAULT_WORLD_EXTENT;
+    this.gridRect?.setAttribute('x', String(-extent / 2));
+    this.gridRect?.setAttribute('y', String(-extent / 2));
+    this.gridRect?.setAttribute('width', String(extent));
+    this.gridRect?.setAttribute('height', String(extent));
+    const pattern = this.svg?.querySelector('pattern');
+    const path = pattern?.querySelector('path');
+    if (!pattern || !path) return;
+    let tile = this.gridSize;
+    if (wide) {
+      const scale = Math.max(this.minScale, this.documentData?.viewport?.scale || 1);
+      while (tile * scale < 12 && tile < extent / 8) tile *= 4;
+      while (tile * scale > 48 && tile > 1.5) tile /= 4;
+      tile = formatNumber(tile);
+      path.setAttribute('vector-effect', 'non-scaling-stroke');
+    } else {
+      path.removeAttribute('vector-effect');
+    }
+    path.setAttribute('stroke-width', '1');
+    pattern.setAttribute('width', String(tile));
+    pattern.setAttribute('height', String(tile));
+    path.setAttribute('d', `M ${tile} 0 L 0 0 0 ${tile}`);
+  }
+
   setViewport(viewport) {
-    this.documentData.viewport = normalizeViewport(viewport);
+    this.documentData.viewport = normalizeViewport(viewport, this.scaleBounds());
     this.render({ inspector: false, json: true });
     this.emitViewportChange('viewport:set');
     return this;
@@ -5395,7 +5614,7 @@ export class VdFlowchart {
   }
 
   resetView() {
-    this.documentData.viewport = normalizeViewport({ x: 0, y: 0, scale: 1 });
+    this.documentData.viewport = normalizeViewport({ x: 0, y: 0, scale: 1 }, this.scaleBounds());
     this.render({ inspector: false, json: true });
     this.emitViewportChange('viewport:reset');
     return this;
@@ -5413,20 +5632,52 @@ export class VdFlowchart {
     const padding = 80;
     const contentWidth = Math.max(1, bounds.right - bounds.left);
     const contentHeight = Math.max(1, bounds.bottom - bounds.top);
-    const scale = clamp(
-      Math.min((width - padding * 2) / contentWidth, (height - padding * 2) / contentHeight),
-      MIN_SCALE,
-      MAX_SCALE,
+    const scale = formatScale(
+      clamp(
+        Math.min((width - padding * 2) / contentWidth, (height - padding * 2) / contentHeight),
+        this.minScale,
+        this.maxScale,
+      ),
     );
 
     this.documentData.viewport = {
       x: formatNumber(width / 2 - ((bounds.left + bounds.right) / 2) * scale),
       y: formatNumber(height / 2 - ((bounds.top + bounds.bottom) / 2) * scale),
-      scale: formatNumber(scale),
+      scale,
     };
 
     this.render({ inspector: false, json: true });
     this.emitViewportChange('viewport:fit');
+    return this;
+  }
+
+  fitNode(nodeId, padding = 48) {
+    const node = this.findNode(nodeId);
+    if (!node || this.isNodeHidden(node.id)) return this;
+    const pad = Math.max(0, toFiniteNumber(padding, 48));
+    const width = this.canvasEl.clientWidth || 800;
+    const height = this.canvasEl.clientHeight || 560;
+    const availableWidth = Math.max(1, width - pad * 2);
+    const availableHeight = Math.max(1, height - pad * 2);
+    const scale = formatScale(
+      clamp(
+        Math.min(
+          availableWidth / Math.max(1, node.width),
+          availableHeight / Math.max(1, node.height),
+        ),
+        this.minScale,
+        this.maxScale,
+      ),
+    );
+    const centerX = node.x + node.width / 2;
+    const centerY = node.y + node.height / 2;
+    this.documentData.viewport = {
+      x: formatNumber(width / 2 - centerX * scale),
+      y: formatNumber(height / 2 - centerY * scale),
+      scale,
+    };
+    this.render({ inspector: false, json: true });
+    this.emitViewportChange('viewport:fit-node');
     return this;
   }
 
@@ -5435,11 +5686,14 @@ export class VdFlowchart {
     this.activeTool = null;
     this.reconnectEdgeId = null;
     this.clipboard = null;
-    this.documentData = normalizeDocument({
-      nodes: [],
-      edges: [],
-      viewport: { x: 0, y: 0, scale: 1 },
-    });
+    this.documentData = normalizeDocument(
+      {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, scale: 1 },
+      },
+      this.normalizationLimits(),
+    );
     this.selection = null;
     this.render();
     this.emitChange('clear');
@@ -5478,6 +5732,38 @@ export class VdFlowchart {
     if ('snapGuides' in options) this.snapGuides = options.snapGuides !== false;
     if ('minimap' in options) this.setMinimapEnabled(options.minimap !== false);
     if ('autoLayout' in options) this.autoLayout = Boolean(options.autoLayout);
+    if (
+      'minScale' in options ||
+      'maxScale' in options ||
+      'minNodeSize' in options ||
+      'maxNodeSize' in options
+    ) {
+      const nextScale = normalizeBoundPair(
+        'minScale' in options ? options.minScale : this.minScale,
+        'maxScale' in options ? options.maxScale : this.maxScale,
+        DEFAULT_MIN_SCALE,
+        DEFAULT_MAX_SCALE,
+      );
+      const nextSize = normalizeBoundPair(
+        'minNodeSize' in options ? options.minNodeSize : this.minNodeSize,
+        'maxNodeSize' in options ? options.maxNodeSize : this.maxNodeSize,
+        DEFAULT_MIN_NODE_SIZE,
+        DEFAULT_MAX_NODE_SIZE,
+      );
+      this.minScale = nextScale.min;
+      this.maxScale = nextScale.max;
+      this.minNodeSize = nextSize.min;
+      this.maxNodeSize = nextSize.max;
+      const clamped = clamp(
+        formatScale(this.documentData.viewport.scale),
+        this.minScale,
+        this.maxScale,
+      );
+      if (clamped !== this.documentData.viewport.scale) {
+        this.documentData.viewport.scale = clamped;
+        this.emitViewportChange('viewport:bounds');
+      }
+    }
     this.syncCanvasLabel();
     if (this.shortcutsHelpOpen) this.renderShortcutsHelp();
     if ('history' in options && (options.history !== false) !== this.historyEnabled) {
@@ -5500,7 +5786,7 @@ export class VdFlowchart {
   }
 
   load(data, options = {}) {
-    const documentData = normalizeDocument(data);
+    const documentData = normalizeDocument(data, this.normalizationLimits());
     if (options.silent && JSON.stringify(documentData) === JSON.stringify(this.documentData)) {
       return this;
     }

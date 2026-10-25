@@ -8,7 +8,7 @@ publish surface for `@vanduo-oss/vd3-flowchart`.
 
 ### Requirement: package identity and exports contract
 
-The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.4.0`, MIT-licensed, ESM
+The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.5.0`, MIT-licensed, ESM
 (`type: "module"`), with `vue >=3.3.0` declared as a REQUIRED peer dependency
 (no `peerDependenciesMeta` optionality). It MUST set
 `publishConfig: { "access": "public" }`. The `exports` map SHALL declare `.`
@@ -41,7 +41,7 @@ The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.4.0`, MIT-licensed, 
 
 - **GIVEN** the release-ready `package.json`
 - **WHEN** its publish-relevant fields are inspected
-- **THEN** `version` is `1.4.0` and `publishConfig.access` is `"public"`
+- **THEN** `version` is `1.5.0` and `publishConfig.access` is `"public"`
 
 ### Requirement: toolchain baseline
 
@@ -50,7 +50,7 @@ The repo MUST pin `packageManager: "pnpm@10.28.2"` and engines
 development/CI toolchain node (24) is pinned by `packageManager` and
 `.github/workflows/ci.yml`. It MUST define the scripts `build`, `clean`,
 `lint`, `format`, `format:check`, `stylelint`, `test`, `test:types`,
-`test:e2e`, `prepack`, and `release` (`pnpm run build && pnpm publish`).
+`test:e2e`, `prepack`, `release:check`, and `release` (`pnpm run build && pnpm publish`).
 
 #### Scenario: every defined script is green
 
@@ -78,7 +78,7 @@ in `pnpm-workspace.yaml`.
 
 ### Requirement: version constant equals package version
 
-`VD_FLOWCHART_VERSION` MUST equal `package.json` `version` and MUST be `'1.4.0'`.
+`VD_FLOWCHART_VERSION` MUST equal `package.json` `version` and MUST be `'1.5.0'`.
 An automated test MUST assert that sync. There is no separate
 `component-versions.json`.
 
@@ -86,23 +86,25 @@ An automated test MUST assert that sync. There is no separate
 
 - **GIVEN** `src/core.js` and `package.json`
 - **WHEN** `VD_FLOWCHART_VERSION` is compared against `package.json` `version`
-- **THEN** both are exactly `'1.4.0'`
+- **THEN** both are exactly `'1.5.0'`
 
 ### Requirement: CI pipeline
 
 The repo MUST provide `.github/workflows/ci.yml` with SHA-pinned actions,
-least-privilege `permissions: contents: read`, pnpm 10.28.2, Node 24, and
-`paths-ignore: "**/*.md"` on push and pull_request. Gates run: frozen
-install, audit, lint, format:check, stylelint, test, **build**, `test:types`,
-then Playwright Chromium. A `dependabot.yml` MUST keep the pinned actions
-current (weekly, grouped, 2-day cooldown).
+least-privilege `permissions: contents: read`, pnpm 10.28.2, and Node 24.
+Push and pull_request to `main` MUST run the workflow without a markdown
+path filter. Gates run: frozen install, audit, lint, format:check, stylelint,
+test, build, `test:skills`, `test:types`, then Playwright Chromium. A
+`dependabot.yml` MUST keep the pinned actions current (weekly, grouped,
+2-day cooldown).
 
 #### Scenario: CI runs the full gate sequence
 
-- **GIVEN** a push or pull request to `main` that is not markdown-only
+- **GIVEN** any push or pull request to `main`
 - **WHEN** the `ci` workflow runs
 - **THEN** it executes install, audit, lint, format:check, stylelint, test,
-  build, test:types, and the Playwright smoke, all with a read-only token
+  build, test:skills, test:types, and the Playwright smoke, all with a
+  read-only token
 
 ### Requirement: single-entry isolation build
 
@@ -145,7 +147,7 @@ are what compile. It MUST pin removed/absent members with `@ts-expect-error`.
 The repo MUST provide a Playwright harness (`playwright.config.ts`, Chromium
 only) whose `webServer` runs Python `http.server` rooted at the repo. The
 suite SHALL load the built `dist/index.js` and assert real-browser mount,
-seeded nodes/edges, `toJSON().version === '1.2.0'`, undo, and zero console
+seeded nodes/edges, `toJSON().version === '1.3.0'`, undo, and zero console
 errors.
 
 #### Scenario: harness serves the shipped artifacts
@@ -159,16 +161,18 @@ errors.
 ### Requirement: release-ready package documentation
 
 The repo MUST ship `README.md`, `SKILL.md`, `CHANGELOG.md`, `CONTRIBUTING.md`,
-and the MIT `LICENSE`. Published files MUST stay limited to `dist`, `README.md`,
-`SKILL.md`, `CHANGELOG.md`, and `LICENSE`. `CHANGELOG.md` MUST carry a dated
-`## 1.4.0` entry. `SKILL.md` MUST carry Agent Skills frontmatter.
+and the MIT `LICENSE`. Published files MUST be `dist`, `README.md`,
+`SKILL.md`, `CHANGELOG.md`, `LICENSE`, `recipes`, and `styles.d.ts`.
+`CHANGELOG.md` MUST carry dated `## 1.4.0` and `## 1.5.0` entries. `SKILL.md` MUST carry
+Agent Skills frontmatter.
 
 #### Scenario: npm pack ships the docs and excludes internals
 
 - **GIVEN** the `files` allow-list in `package.json`
 - **WHEN** `pnpm pack` assembles the tarball
 - **THEN** it contains `README.md`, `SKILL.md`, `CHANGELOG.md`, `LICENSE`,
-  `dist/`, and `package.json` — and never `openspec/`, `tests/`, or `scripts/`
+  `recipes/`, `styles.d.ts`, `dist/`, and `package.json`, and never
+  `openspec/`, `tests/`, `scripts/`, or `src/`
 
 ### Requirement: release-publish-configuration
 
@@ -181,3 +185,23 @@ skips `prepack`.
 - **GIVEN** `.npmrc` sets `ignore-scripts=true` and `dist/` is gitignored
 - **WHEN** the maintainer runs `pnpm run release`
 - **THEN** the full `build` runs before `pnpm publish`
+
+### Requirement: shipped artifact and engine-floor checks
+
+`release:check` MUST run the local quality gates without publishing. CI MUST
+run those gates on Node 24 and MUST also install and test the built package
+on Node 20.19. A pack check MUST reject unexpected tarball paths and MUST
+install the tarball in temporary ESM and CJS consumers.
+
+#### Scenario: release check does not publish
+
+- **GIVEN** a maintainer runs `pnpm run release:check`
+- **WHEN** the command finishes
+- **THEN** it MUST NOT call `pnpm publish` and it MUST fail when strict
+  OpenSpec or the pack consumer smoke fails
+
+#### Scenario: Node 20.19 consumes the build
+
+- **GIVEN** the package engines declare `node >=20.19.0`
+- **WHEN** CI runs
+- **THEN** a Node `20.19` job MUST install, build, and run the unit tests

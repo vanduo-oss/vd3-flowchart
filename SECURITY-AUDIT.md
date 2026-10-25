@@ -1,9 +1,9 @@
 # Development audit exceptions
 
-Approved by the maintainer on 2026-10-08 for the vd3 ecosystem security pass
-(extends the earlier braces note). Owner: vanduo-oss. Review at the next
-dependency update or release and no later than 2026-12-31, or sooner if a
-patched path ships.
+Reviewed again for the 1.5.0 release on 2026-10-25. The braces and uri-js
+advisories below still have no patched install path, so the existing exceptions
+remain. Owner: vanduo-oss. Review again at the next dependency update or
+release and no later than 2026-12-31, or sooner if a patched path ships.
 
 ## braces — CVE-2026-93687 / GHSA-vfj7-8cjw-p6xm
 

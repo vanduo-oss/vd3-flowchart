@@ -256,3 +256,19 @@ describe('VdFlowchart wrapper — unmount', () => {
     removeSpy.mockRestore();
   });
 });
+
+describe('VdFlowchart wrapper — deep zoom props', () => {
+  it('passes camera and node bounds and exposes fitNode', async () => {
+    stubClientSize(800);
+    const wrapper = mountFlow({ minScale: 0.05, maxScale: 20, minNodeSize: 6, maxNodeSize: 4800 });
+    const core = coreOf(wrapper);
+    expect(core.minScale).toBe(0.05);
+    expect(core.maxScale).toBe(20);
+    expect(core.minNodeSize).toBe(6);
+    expect(core.maxNodeSize).toBe(4800);
+    const node = core.addNode({ type: 'rect', x: 40, y: 40, width: 80, height: 40, text: 'Frame' });
+    await wrapper.vm.$nextTick();
+    (wrapper.vm as { fitNode: (id: string) => void }).fitNode(node.id);
+    expect(core.documentData.viewport.scale).toBeGreaterThan(1);
+  });
+});

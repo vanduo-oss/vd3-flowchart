@@ -16,6 +16,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 
 ### Requirement: Connection labels are editable from the keyboard
 
+The editor SHALL let a keyboard user select one of a node's connections and edit its label.
+
 #### Scenario: Label a connection without a mouse
 
 - **Given** a selected node with an outgoing connection on its right side
@@ -23,6 +25,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 - **Then** that connection MUST be selected, its label MUST equal the typed text, and one undo MUST restore the previous label
 
 ### Requirement: Dragged nodes snap to alignment guides
+
+With snap guides enabled, a dragged node SHALL snap to a nearby node edge or centre and show that guide. Holding Alt SHALL bypass the snap.
 
 #### Scenario: Near-aligned drag
 
@@ -32,6 +36,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 
 ### Requirement: Minimap pans the view
 
+With the minimap enabled, clicking it SHALL centre the viewport on the corresponding world point without changing nodes or edges.
+
 #### Scenario: Click on the minimap
 
 - **Given** `minimap` is enabled
@@ -39,6 +45,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 - **Then** the viewport MUST centre on the corresponding world position without changing the document
 
 ### Requirement: Several nodes can be selected and edited together
+
+The editor SHALL select several nodes and move that group together as one undo step. A select event SHALL keep one primary selection and list every selected id.
 
 #### Scenario: Marquee then group move
 
@@ -53,6 +61,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 - **Then** `selection` MUST keep its single-item shape and `nodeIds` MUST list every selected node
 
 ### Requirement: Branches can be collapsed and saved
+
+The editor SHALL hide a collapsed node's descendants, show a count badge, and write `collapsed: true` only on collapsed nodes. Documents through 1.3.0 SHALL load. A later document version SHALL be rejected before state changes.
 
 #### Scenario: Collapse hides descendants
 
@@ -79,6 +89,8 @@ SHALL load; later versions SHALL be rejected before any state changes.
 - **Then** loading MUST throw and the current document, selection, and history MUST be unchanged
 
 ### Requirement: Optional layout after insertion
+
+When auto layout is enabled, inserting a node SHALL re-run the current tree or radial layout in the same undo step.
 
 #### Scenario: autoLayout on
 

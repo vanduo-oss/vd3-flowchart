@@ -2,6 +2,33 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
+## 1.5.0 — 2026-10-25
+
+### Added
+
+- Opt-in `minScale` and `maxScale` (default `0.35` and `3`) and `minNodeSize`
+  and `maxNodeSize` (default `56` and `420`). Junctions stay fixed-size.
+  Hosts that need a closer and wider view, including Oolaflow, can pass
+  `0.05`–`20` and `6`–`4800`.
+- Viewport scale is stored to four decimal places, so a zoom step still moves
+  near 5%. Other geometry stays at two decimal places.
+- Nodes smaller than their default size scale text, wrapping, radius, stroke,
+  markers, curve arms, orthogonal routes, labels, and inline editors in
+  proportion. Larger nodes do not grow that chrome.
+- A wider camera range uses a 240,000-unit grid with spacing that stays
+  readable at 5% and 2000%. The default range keeps the 12,000-unit grid.
+- `fitNode(nodeId, padding?)` frames one visible node. Unknown and hidden
+  nodes do nothing.
+
+### Compatibility
+
+- No methods were removed. Omitting the new options keeps 1.4.0 camera and
+  node limits.
+- `FLOWCHART_DOCUMENT_VERSION` stays `1.3.0`. Older 1.x documents still load.
+  A 1.5.0 document still loads in 1.4.0, where the old clamps apply.
+- This release does not add nested containers, suggestion overlays, floating
+  panels, or an export API.
+
 ## 1.4.0 — 2026-10-03
 
 ### Changed

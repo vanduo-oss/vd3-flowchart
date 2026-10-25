@@ -28,6 +28,10 @@ const editor = new VdFlowchartCore({
   autoFit: true,
   history: true,
   historyLimit: 50,
+  minScale: 0.05,
+  maxScale: 20,
+  minNodeSize: 6,
+  maxNodeSize: 4800,
 });
 
 editor.selectNode('a').deselect();
@@ -46,6 +50,7 @@ const branch = editor.insertBranchNode('a', { direction: 'left', edit: true });
 const sibling = editor.insertSiblingNode('b', { before: true });
 const navigated: boolean = editor.navigateSelection('up');
 editor.zoomTo(1).toggleShortcutsHelp(true);
+editor.fitNode('a', 48);
 editor.startTextEdit('a', { initialText: 'x' });
 editor.updateOptions({ keyboardShortcuts: 'basic' });
 const shortcutModes: readonly FlowchartKeyboardShortcuts[] = FLOWCHART_KEYBOARD_SHORTCUTS;
@@ -95,6 +100,10 @@ const flowchartProps: VdFlowchartProps = {
   snapGuides: true,
   minimap: true,
   autoLayout: false,
+  minScale: 0.05,
+  maxScale: 20,
+  minNodeSize: 6,
+  maxNodeSize: 4800,
 };
 // @ts-expect-error — `history` is a boolean flag, not a number.
 const badFlowchartProps: VdFlowchartProps = { history: 5 };

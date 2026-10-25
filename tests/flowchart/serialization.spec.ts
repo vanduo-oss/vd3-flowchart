@@ -38,8 +38,8 @@ afterEach(() => {
 });
 
 describe('flowchart serialization — VERSION manifest sync', () => {
-  it('exposes VD_FLOWCHART_VERSION === "1.4.0"', () => {
-    expect(VD_FLOWCHART_VERSION).toBe('1.4.0');
+  it('exposes VD_FLOWCHART_VERSION === "1.5.0"', () => {
+    expect(VD_FLOWCHART_VERSION).toBe('1.5.0');
   });
 
   it('keeps FLOWCHART_DOCUMENT_VERSION at 1.3.0', () => {
@@ -277,5 +277,22 @@ describe('document validation preserves current work', () => {
     core.loadJsonButton.click();
     expect(core.jsonStatus.textContent).toContain('Invalid flowchart JSON');
     expect(core.toJSON().nodes[0].id).toBe('a');
+  });
+});
+
+describe('deep zoom does not change the document format', () => {
+  it('stores a wide scale as a plain number on version 1.3.0', () => {
+    const core = makeCore({ minScale: 0.05, maxScale: 20, minNodeSize: 6, maxNodeSize: 4800 });
+    core.setViewport({ x: 12, y: 8, scale: 0.05 });
+    core.addNode({ type: 'rect', width: 6, height: 6, text: 'Tiny' });
+    const doc = core.toJSON();
+    expect(doc.version).toBe('1.3.0');
+    expect(doc.version).not.toBe(VD_FLOWCHART_VERSION);
+    expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.3.0');
+    expect(doc.viewport.scale).toBe(0.05);
+    const reloaded = makeCore({ minScale: 0.05, maxScale: 20 });
+    reloaded.load(doc);
+    expect(reloaded.toJSON().version).toBe('1.3.0');
+    expect(reloaded.toJSON().viewport.scale).toBe(0.05);
   });
 });
