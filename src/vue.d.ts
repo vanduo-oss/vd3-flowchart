@@ -41,6 +41,14 @@ export interface VdFlowchartProps {
   minimap?: boolean;
   /** Re-run the current layout after keyboard or handle insertions (default false). */
   autoLayout?: boolean;
+  /** Lowest camera scale. Defaults to 0.35. */
+  minScale?: number;
+  /** Highest camera scale. Defaults to 3. */
+  maxScale?: number;
+  /** Smallest resizable-node side. Defaults to 56. */
+  minNodeSize?: number;
+  /** Largest resizable-node side. Defaults to 420. */
+  maxNodeSize?: number;
 }
 
 export interface VdFlowchartEmits {
@@ -59,6 +67,7 @@ export interface VdFlowchartExposed {
   canUndo(): boolean;
   canRedo(): boolean;
   layout(mode?: LayoutMode, options?: LayoutOptions): void;
+  fitNode(nodeId: string, padding?: number): void;
 }
 
 /* eslint-disable @typescript-eslint/no-empty-object-type -- DefineComponent filler params */

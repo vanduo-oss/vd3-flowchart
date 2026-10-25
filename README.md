@@ -6,7 +6,7 @@ Vanduo **flowchart** for Vue 3: a node/edge editor with undo/redo, layout
 modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
-**Status: 1.4.0.** `VD_FLOWCHART_VERSION` tracks the package release.
+**Status: 1.5.0.** `VD_FLOWCHART_VERSION` tracks the package release.
 `FLOWCHART_DOCUMENT_VERSION` (currently `1.3.0`) is the value `toJSON()`
 writes. Do not reset either independently without a compatibility plan.
 
@@ -50,7 +50,7 @@ if anything but `vue` is externalized. The package declares
 
 ## Version policy
 
-`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.4.0`). Bump those
+`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.5.0`). Bump those
 together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
 unless the serialized schema changes; add fixtures and explicit compatibility
 rules for a format change. Unversioned 1.x documents through 1.3.0 still load;
@@ -99,6 +99,29 @@ follows mind-map tools such as XMind and MindNode:
 `keyboardShortcuts: 'basic'` keeps Tab for focus movement; Enter or F2 edits and
 Ctrl/Cmd+Enter saves. A node plus its edge is one undo step, and naming a
 just-inserted node joins that step.
+
+## Camera and node bounds
+
+`minScale` / `maxScale` default to `0.35` / `3`, and `minNodeSize` /
+`maxNodeSize` default to `56` / `420`. Pass a finite pair to widen either
+range; an invalid pair falls back to those defaults. Junctions stay 28×28.
+`fitNode(id, padding)` frames one visible node. Padding is screen pixels.
+Scale is stored to four decimal places. Nodes smaller than their default size
+scale their text, markers, and routes down with them. The default grid stays
+12,000 units; a wider camera uses a 240,000-unit grid.
+
+```js
+new VdFlowchartCore({
+  element: '#editor',
+  minScale: 0.05,
+  maxScale: 20,
+  minNodeSize: 6,
+  maxNodeSize: 4800,
+});
+```
+
+The same four names are Vue props. The document format is unchanged: scale and
+size remain plain numbers.
 
 ## Theming
 

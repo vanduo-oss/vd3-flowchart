@@ -28,23 +28,29 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       # Fail on moderate+ advisories except the approved braces exception.
-      # CVE-2026-93687 scope, rationale and removal: SECURITY-AUDIT.md
-      - run: pnpm audit --audit-level=moderate --ignore GHSA-vfj7-8cjw-p6xm
-      - run: pnpm lint
-      - run: pnpm run format:check
-      - run: pnpm run stylelint
+      # CVE-2026-93687 scope, rationale and removal: SECURITY-AUDIT.md.
+      # release:check repeats that audit and then runs lint, format, stylelint,
+      # unit tests, build, skill and type checks, Playwright, strict OpenSpec,
+      # and the packed ESM/CJS consumer smoke. It does not publish.
+      - name: E2E browser
+        run: npx playwright install --with-deps chromium
+      - run: pnpm run release:check
+
+  node-20:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20.19.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm run build
-      - run: pnpm run test:skills
-
-      # Type-test harness: `tsc --noEmit` over tests/types. It resolves the
-      # package's own "exports" map (self-reference) to the built dist/*.d.ts,
-      # so it must run AFTER `pnpm run build`.
-      - run: pnpm run test:types
-
-      # Playwright SVG rendering smoke (Chromium only). The fixtures import
-      # the built dist ESM entries, so this also runs after the build.
-      - name: E2E (Playwright, Chromium)
-        run: |
-          npx playwright install --with-deps chromium
-          pnpm run test:e2e

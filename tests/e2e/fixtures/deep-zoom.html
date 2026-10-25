@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vd3-flowchart deep zoom</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/dist/vd3-flowchart.css" />
+    <style>
+      body { margin: 0; }
+      #flowchart { width: 900px; height: 600px; }
+    </style>
+    <script type="importmap">
+      { "imports": { "vue": "/node_modules/vue/dist/vue.esm-browser.js" } }
+    </script>
+  </head>
+  <body>
+    <div id="flowchart"></div>
+    <script type="module">
+      import { VdFlowchartCore } from '/dist/index.js';
+
+      const editor = new VdFlowchartCore({
+        element: '#flowchart',
+        history: true,
+        minScale: 0.05,
+        maxScale: 20,
+        minNodeSize: 6,
+        maxNodeSize: 4800,
+      });
+      const a = editor.addNode({ id: 'a', type: 'rect', x: 40, y: 40, width: 6, height: 6, text: 'Micro' });
+      const b = editor.addNode({ id: 'b', type: 'rect', x: 80, y: 40, width: 6, height: 6, text: 'Node' });
+      editor.addEdge({ id: 'join', from: a.id, to: b.id, label: 'yes' });
+      editor.addNode({ id: 'large', type: 'rect', x: 200, y: 200, width: 4800, height: 2400, text: 'Large' });
+
+      window.editor = editor;
+      window.toJSON = () => editor.toJSON();
+      window.zoomTo = (scale) => editor.zoomTo(scale);
+      window.fitNode = (id) => editor.fitNode(id);
+      window.__ready = true;
+    </script>
+  </body>
+</html>

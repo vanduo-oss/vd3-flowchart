@@ -47,6 +47,15 @@ label. Shift+click, Shift+drag, and Cmd/Ctrl+A select several nodes (the
 current tree or radial layout after insertions. Saved JSON uses document
 format 1.3.0, which adds `collapsed: true` on collapsed nodes only.
 
+## Deep zoom
+
+`minScale` and `maxScale` default to `0.35` and `3`. `minNodeSize` and
+`maxNodeSize` default to `56` and `420`. Pass both ends of a pair to opt into
+a wider camera or smaller and larger nodes. Junctions stay fixed-size.
+`getInstance().fitNode(id, padding)` frames one visible node. A node smaller
+than its default size scales its text, markers, and connectors with it. Saved
+JSON stays document format 1.3.0.
+
 ## Verification
 
 Add a node, toggle read-only, and confirm the edit remains. Undo/redo, save/reload,

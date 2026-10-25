@@ -24,6 +24,10 @@ const EDITOR_OPTION_KEYS = [
   'snapGuides',
   'minimap',
   'autoLayout',
+  'minScale',
+  'maxScale',
+  'minNodeSize',
+  'maxNodeSize',
 ];
 
 export const VdFlowchart = defineComponent({
@@ -51,6 +55,14 @@ export const VdFlowchart = defineComponent({
     minimap: { type: Boolean, default: true },
     /** Re-run the current layout after keyboard or handle insertions (default false). */
     autoLayout: { type: Boolean, default: false },
+    /** Lowest camera scale. Default 0.35 when omitted. */
+    minScale: { type: Number, default: undefined },
+    /** Highest camera scale. Default 3 when omitted. */
+    maxScale: { type: Number, default: undefined },
+    /** Smallest resizable-node side. Default 56 when omitted. */
+    minNodeSize: { type: Number, default: undefined },
+    /** Largest resizable-node side. Default 420 when omitted. */
+    maxNodeSize: { type: Number, default: undefined },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
   setup(props, { emit, expose }) {
@@ -107,6 +119,7 @@ export const VdFlowchart = defineComponent({
       canUndo: () => Boolean(instance?.canUndo()),
       canRedo: () => Boolean(instance?.canRedo()),
       layout: (mode, options) => instance?.layout(mode, options),
+      fitNode: (nodeId, padding) => instance?.fitNode(nodeId, padding),
     });
 
     return () => h('div', { ref: el, class: 'vd-flowchart' });

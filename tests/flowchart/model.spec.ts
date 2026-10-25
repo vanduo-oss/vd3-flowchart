@@ -242,3 +242,18 @@ describe('flowchart core — destroy() teardown', () => {
     expect(core.destroyed).toBe(true);
   });
 });
+
+describe('flowchart model — opt-in node bounds', () => {
+  it('keeps a 6-unit node when the host opts in, and leaves junctions fixed', () => {
+    const core = makeCore({ minNodeSize: 6, maxNodeSize: 4800 });
+    const small = core.addNode({ type: 'rect', width: 6, height: 6, text: 'Micro' });
+    const junction = core.addNode({ type: 'junction', width: 6, height: 4800 });
+    expect(small.width).toBe(6);
+    expect(small.height).toBe(6);
+    expect(junction.width).toBe(28);
+    expect(junction.height).toBe(28);
+    const pasted = core.pasteNodeData(small);
+    expect(pasted.width).toBe(6);
+    expect(pasted.height).toBe(6);
+  });
+});

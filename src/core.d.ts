@@ -237,6 +237,14 @@ export interface VdFlowchartOptions {
   minimap?: boolean;
   /** Re-run the current tree or radial layout after insertions, in the same undo step (default false). */
   autoLayout?: boolean;
+  /** Lowest camera scale. Default `0.35`. Pair with `maxScale`. */
+  minScale?: number;
+  /** Highest camera scale. Default `3`. Pair with `minScale`. */
+  maxScale?: number;
+  /** Smallest resizable-node side. Default `56`. Junctions stay fixed. Pair with `maxNodeSize`. */
+  minNodeSize?: number;
+  /** Largest resizable-node side. Default `420`. Pair with `minNodeSize`. */
+  maxNodeSize?: number;
 }
 
 export class VdFlowchart {
@@ -330,6 +338,8 @@ export class VdFlowchart {
   zoomTo(scale: number): this;
   /** Pan just enough to bring a node into view. */
   revealNode(nodeId: string): void;
+  /** Centre and frame one visible node. Padding is screen pixels. */
+  fitNode(nodeId: string, padding?: number): this;
   /** Show or hide the minimap. */
   setMinimapEnabled(enabled: boolean): this;
   /** Pan so a world point is at the centre of the view. */
@@ -364,6 +374,10 @@ export class VdFlowchart {
       | 'snapGuides'
       | 'minimap'
       | 'autoLayout'
+      | 'minScale'
+      | 'maxScale'
+      | 'minNodeSize'
+      | 'maxNodeSize'
     >,
   ): this;
   destroy(): void;

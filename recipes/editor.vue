@@ -12,6 +12,8 @@ const document = ref<VdFlowchartDocument>({
 <template>
   <button type="button" @click="readonly = !readonly">Toggle read-only</button>
   <button type="button" :disabled="readonly" @click="editor?.undo()">Undo</button>
-  <VdFlowchart ref="editor" :data="document" :readonly="readonly" auto-fit
-    style="height: 560px" @change="document = $event.document" />
+  <button type="button" @click="editor?.fitNode('start')">Frame start</button>
+  <VdFlowchart ref="editor" :data="document" :readonly="readonly"
+    :min-scale="0.05" :max-scale="20" :min-node-size="6" :max-node-size="4800"
+    auto-fit style="height: 560px" @change="document = $event.document" />
 </template>
