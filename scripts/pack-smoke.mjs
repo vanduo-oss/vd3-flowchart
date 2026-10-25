@@ -7,7 +7,15 @@ import process from 'node:process';
 
 const root = process.cwd();
 const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+const temporaryDirectories = [];
 const packDir = mkdtempSync(path.join(tmpdir(), 'vd3-flowchart-pack-'));
+temporaryDirectories.push(packDir);
+
+function cleanup() {
+  for (const directory of temporaryDirectories) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 const required = [
   'package.json',
   'README.md',
@@ -26,6 +34,7 @@ const required = [
 const forbidden = ['openspec/', 'tests/', 'scripts/', 'src/'];
 
 function fail(message) {
+  cleanup();
   process.stderr.write(`${message}\n`);
   process.exit(1);
 }
@@ -61,6 +70,7 @@ if (packed.version && packed.version !== manifest.version) {
 const filename = packed.filename || files.find((file) => file.endsWith('.tgz'));
 const tarball = path.isAbsolute(filename) ? filename : path.join(packDir, path.basename(filename));
 const consumer = mkdtempSync(path.join(tmpdir(), 'vd3-flowchart-consumer-'));
+temporaryDirectories.push(consumer);
 
 function installConsumer(directory, packageJson) {
   writeFileSync(path.join(directory, 'package.json'), JSON.stringify(packageJson, null, 2));
@@ -120,8 +130,7 @@ try {
 } catch (error) {
   fail(error.stderr || error.message);
 } finally {
-  rmSync(packDir, { recursive: true, force: true });
-  rmSync(consumer, { recursive: true, force: true });
+  cleanup();
 }
 
 process.stdout.write(

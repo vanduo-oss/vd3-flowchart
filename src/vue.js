@@ -55,13 +55,13 @@ export const VdFlowchart = defineComponent({
     minimap: { type: Boolean, default: true },
     /** Re-run the current layout after keyboard or handle insertions (default false). */
     autoLayout: { type: Boolean, default: false },
-    /** Lowest camera scale. Default 0.35 when omitted. */
+    /** Lowest camera scale. Defaults to 0.35. Set it together with maxScale. */
     minScale: { type: Number, default: undefined },
-    /** Highest camera scale. Default 3 when omitted. */
+    /** Highest camera scale. Defaults to 3. Set it together with minScale. */
     maxScale: { type: Number, default: undefined },
-    /** Smallest resizable-node side. Default 56 when omitted. */
+    /** Smallest resizable-node side. Defaults to 56. Set it together with maxNodeSize. */
     minNodeSize: { type: Number, default: undefined },
-    /** Largest resizable-node side. Default 420 when omitted. */
+    /** Largest resizable-node side. Defaults to 420. Set it together with minNodeSize. */
     maxNodeSize: { type: Number, default: undefined },
   },
   emits: ['change', 'select', 'viewport', 'connect', 'ready'],
@@ -70,7 +70,21 @@ export const VdFlowchart = defineComponent({
     let instance = null;
 
     const editorOptions = () =>
-      Object.fromEntries(EDITOR_OPTION_KEYS.map((key) => [key, props[key]]));
+      Object.fromEntries(
+        EDITOR_OPTION_KEYS.flatMap((key) => {
+          const value = props[key];
+          if (
+            (key === 'minScale' ||
+              key === 'maxScale' ||
+              key === 'minNodeSize' ||
+              key === 'maxNodeSize') &&
+            value == null
+          ) {
+            return [];
+          }
+          return [[key, value]];
+        }),
+      );
 
     const create = () => {
       instance = new VdFlowchartCore({

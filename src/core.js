@@ -3430,7 +3430,9 @@ export class VdFlowchart {
 
   getMarkerId(markerType, position, strokeWidth, edgeScale = 1) {
     const width = normalizeEdgeStrokeWidth(strokeWidth);
-    const scale = clamp(formatScale(edgeScale), 0.01, 1);
+    // Two decimals, not four: a resize drag changes the scale every frame, and
+    // a four-decimal key would leave an orphan marker for each pointer move.
+    const scale = clamp(formatNumber(Math.max(edgeScale, 0.01)), 0.01, 1);
     const key = `${markerType}:${position}:${width}:${scale}`;
     if (this.markerIds.has(key)) {
       return this.markerIds.get(key);
@@ -3885,6 +3887,8 @@ export class VdFlowchart {
     clearChildren(this.previewLayer);
     clearChildren(this.nodesLayer);
     clearChildren(this.overlayLayer);
+    clearChildren(this.markerDefs);
+    this.markerIds = new Map();
 
     const hidden = this.getHiddenNodeIds();
     this.sceneHidden = hidden;
@@ -5761,7 +5765,7 @@ export class VdFlowchart {
       );
       if (clamped !== this.documentData.viewport.scale) {
         this.documentData.viewport.scale = clamped;
-        this.emitViewportChange('viewport:bounds');
+        this.pendingBoundsEvent = true;
       }
     }
     this.syncCanvasLabel();
@@ -5781,6 +5785,10 @@ export class VdFlowchart {
       }
     }
     this.render();
+    if (this.pendingBoundsEvent) {
+      this.pendingBoundsEvent = false;
+      this.emitViewportChange('viewport:bounds');
+    }
     this.updateHistoryButtons();
     return this;
   }

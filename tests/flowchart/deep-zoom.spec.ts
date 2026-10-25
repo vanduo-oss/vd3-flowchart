@@ -157,10 +157,14 @@ describe('deep zoom node bounds and rendering', () => {
       '[data-node-id="sa"] .vd-flowchart-node-text',
     ) as SVGElement;
     expect(Number.parseFloat(smallText.style.fontSize)).toBeLessThan(14);
-    const smallLabel = [...core.svg.querySelectorAll('.vd-flowchart-edge-label')].find((label) =>
-      label.getAttribute('data-edge-id'),
+    const microEdge = core.documentData.edges.find(
+      (edge: { from: { nodeId: string }; to: { nodeId: string } }) =>
+        edge.from.nodeId === 'sa' && edge.to.nodeId === 'sb',
     );
-    expect(smallLabel).toBeTruthy();
+    const smallLabel = core.svg.querySelector(
+      `.vd-flowchart-edge-label[data-edge-id="${microEdge.id}"]`,
+    ) as SVGElement;
+    expect(Number.parseFloat(smallLabel.style.fontSize)).toBeLessThan(12);
 
     const largeA = core.addNode({
       id: 'la',
@@ -185,6 +189,17 @@ describe('deep zoom node bounds and rendering', () => {
       Number(marker.getAttribute('markerWidth')),
     );
     expect(Math.max(...after)).toBe(normal);
+  });
+
+  it('replaces markers while a node is resized instead of accumulating them', () => {
+    const core = makeCore(WIDE);
+    const a = core.addNode({ id: 'a', type: 'rect', x: 0, y: 0, width: 180, height: 96 });
+    const b = core.addNode({ id: 'b', type: 'rect', x: 400, y: 0, width: 180, height: 96 });
+    core.addEdge({ from: a.id, to: b.id });
+    for (let width = 180; width >= 56; width -= 1) {
+      core.updateNode(a.id, { width });
+    }
+    expect(core.svg.querySelectorAll('marker').length).toBeLessThanOrEqual(4);
   });
 
   it('uses the legacy grid unless the camera range is wider', () => {

@@ -41,13 +41,13 @@ export interface VdFlowchartProps {
   minimap?: boolean;
   /** Re-run the current layout after keyboard or handle insertions (default false). */
   autoLayout?: boolean;
-  /** Lowest camera scale. Defaults to 0.35. */
+  /** Lowest camera scale. Defaults to 0.35. Set it together with `maxScale`. */
   minScale?: number;
-  /** Highest camera scale. Defaults to 3. */
+  /** Highest camera scale. Defaults to 3. Set it together with `minScale`. */
   maxScale?: number;
-  /** Smallest resizable-node side. Defaults to 56. */
+  /** Smallest resizable-node side. Defaults to 56. Set it together with `maxNodeSize`. */
   minNodeSize?: number;
-  /** Largest resizable-node side. Defaults to 420. */
+  /** Largest resizable-node side. Defaults to 420. Set it together with `minNodeSize`. */
   maxNodeSize?: number;
 }
 

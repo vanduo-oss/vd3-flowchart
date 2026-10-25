@@ -290,9 +290,15 @@ describe('deep zoom does not change the document format', () => {
     expect(doc.version).not.toBe(VD_FLOWCHART_VERSION);
     expect(FLOWCHART_DOCUMENT_VERSION).toBe('1.3.0');
     expect(doc.viewport.scale).toBe(0.05);
-    const reloaded = makeCore({ minScale: 0.05, maxScale: 20 });
+    const reloaded = makeCore({
+      minScale: 0.05,
+      maxScale: 20,
+      minNodeSize: 6,
+      maxNodeSize: 4800,
+    });
     reloaded.load(doc);
     expect(reloaded.toJSON().version).toBe('1.3.0');
     expect(reloaded.toJSON().viewport.scale).toBe(0.05);
+    expect(reloaded.toJSON().nodes[0]).toMatchObject({ width: 6, height: 6 });
   });
 });
