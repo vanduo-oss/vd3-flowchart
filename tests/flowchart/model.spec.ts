@@ -256,4 +256,23 @@ describe('flowchart model — opt-in node bounds', () => {
     expect(pasted.width).toBe(6);
     expect(pasted.height).toBe(6);
   });
+
+  it('routes a 40px-gap facing orthogonal edge directly without looping above or below', () => {
+    const core = makeCore();
+    const a = core.addNode({ type: 'rect', x: 0, y: 0, width: 180, height: 96, text: 'A' });
+    const b = core.addNode({ type: 'rect', x: 0, y: 136, width: 180, height: 96, text: 'B' });
+    core.addEdge({
+      from: { nodeId: a.id, port: 'bottom' },
+      to: { nodeId: b.id, port: 'top' },
+      route: 'orthogonal',
+    });
+    const path = (core.element as HTMLElement).querySelector('.vd-flowchart-edge-path');
+    expect(path).not.toBeNull();
+    const d = path!.getAttribute('d') || '';
+    const ys = [...d.matchAll(/[MLQ]\s+[\d.-]+\s+([\d.-]+)/g)].map((m) => Number(m[1]));
+    for (const y of ys) {
+      expect(y).toBeGreaterThanOrEqual(96);
+      expect(y).toBeLessThanOrEqual(136);
+    }
+  });
 });

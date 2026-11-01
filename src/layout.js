@@ -19,6 +19,9 @@ const DIRECTIONS = {
   up: { main: 'y', sign: -1 },
 };
 
+const DEFAULT_LEVEL_EDGE_GAP = 88;
+const DEFAULT_SIBLING_EDGE_GAP = 64;
+
 function num(value, fallback) {
   const next = Number(value);
   return Number.isFinite(next) ? next : fallback;
@@ -44,71 +47,204 @@ function pickRoots(nodes, indegree, optRoot) {
   return roots.length ? roots : nodes.length ? [nodes[0].id] : [];
 }
 
-// Spanning forest (first visit wins) so a shared child or a cycle is placed
-// exactly once. Every node is reached: any node left unvisited after the real
-// roots becomes its own root. Returns DFS depth + per-node spanning children.
+// Spanning forest with cycle-safe longest-path ranks so a shared child (e.g. a
+// diamond join or End node) sits below all incoming forward branches instead of
+// staying pinned to whichever short branch DFS visited first.
 function spanningForest(allIds, roots, children) {
   const visited = new Set();
-  const depth = new Map();
-  const tree = new Map();
+  const active = new Set();
   const forestRoots = [];
+  const forwardParents = new Map(allIds.map((id) => [id, []]));
 
-  const walk = (id, d) => {
+  const dfs = (id) => {
     visited.add(id);
-    depth.set(id, d);
-    const kids = [];
+    active.add(id);
     (children.get(id) || []).forEach((child) => {
-      if (!visited.has(child)) {
-        kids.push(child);
-        walk(child, d + 1);
-      }
+      if (active.has(child)) return;
+      const list = forwardParents.get(child);
+      if (list && !list.includes(id)) list.push(id);
+      if (!visited.has(child)) dfs(child);
     });
-    tree.set(id, kids);
+    active.delete(id);
   };
 
   roots.forEach((root) => {
     if (!visited.has(root)) {
       forestRoots.push(root);
-      walk(root, 0);
+      dfs(root);
     }
   });
   allIds.forEach((id) => {
     if (!visited.has(id)) {
       forestRoots.push(id);
-      walk(id, 0);
+      dfs(id);
     }
   });
+
+  const depth = new Map(allIds.map((id) => [id, 0]));
+  const limit = Math.max(1, allIds.length);
+  for (let pass = 0; pass < limit; pass += 1) {
+    let changed = false;
+    for (const id of allIds) {
+      const parents = forwardParents.get(id) || [];
+      for (const parent of parents) {
+        const nextDepth = Math.min(limit, (depth.get(parent) || 0) + 1);
+        if (nextDepth > (depth.get(id) || 0)) {
+          depth.set(id, nextDepth);
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+
+  const tree = new Map(allIds.map((id) => [id, []]));
+  const rootSet = new Set(forestRoots);
+  const chosenParent = new Map();
+  for (const id of allIds) {
+    if (rootSet.has(id)) continue;
+    const parents = forwardParents.get(id) || [];
+    if (!parents.length) continue;
+    let bestParent = parents[0];
+    let bestDepth = depth.get(bestParent) ?? -1;
+    for (let index = 1; index < parents.length; index += 1) {
+      const candidate = parents[index];
+      const candidateDepth = depth.get(candidate) ?? -1;
+      if (candidateDepth > bestDepth) {
+        bestDepth = candidateDepth;
+        bestParent = candidate;
+      }
+    }
+    chosenParent.set(id, bestParent);
+  }
+  const placedChild = new Set();
+  for (const parentId of allIds) {
+    const out = tree.get(parentId);
+    for (const childId of children.get(parentId) || []) {
+      if (chosenParent.get(childId) === parentId && !placedChild.has(childId)) {
+        placedChild.add(childId);
+        out.push(childId);
+      }
+    }
+  }
 
   return { depth, tree, forestRoots };
 }
 
 function treeCenters(forestRoots, tree, depth, sizeOf, options) {
   const dir = DIRECTIONS[options.direction] || DIRECTIONS.right;
-  const levelGap = num(options.levelGap, 220);
-  const siblingGap = num(options.siblingGap, 140);
-  const crossOf = new Map();
-  let cursor = 0;
+  const hasExplicitLevel = Number.isFinite(Number(options.levelGap));
+  const hasExplicitSibling = Number.isFinite(Number(options.siblingGap));
+  const explicitLevelGap = num(options.levelGap, 220);
+  const explicitSiblingGap = num(options.siblingGap, 140);
+  const edgeSiblingGap = hasExplicitSibling
+    ? Math.max(16, explicitSiblingGap - 96)
+    : DEFAULT_SIBLING_EDGE_GAP;
 
-  const place = (id) => {
+  const crossSpan = (id) => {
+    const size = sizeOf(id);
+    return dir.main === 'x' ? size.height : size.width;
+  };
+  const mainSpan = (id) => {
+    const size = sizeOf(id);
+    return dir.main === 'x' ? size.width : size.height;
+  };
+
+  const subtreeSpan = new Map();
+  const subtreeCount = new Map();
+  const measure = (id) => {
+    const selfSpan = crossSpan(id);
     const kids = tree.get(id) || [];
     if (!kids.length) {
-      crossOf.set(id, cursor);
-      cursor += siblingGap;
-      return crossOf.get(id);
+      subtreeSpan.set(id, selfSpan);
+      subtreeCount.set(id, 1);
+      return selfSpan;
     }
-    const childCenters = kids.map(place);
+    let childTotal = 0;
+    let totalCount = 1;
+    kids.forEach((kid, index) => {
+      if (index > 0) childTotal += edgeSiblingGap;
+      childTotal += measure(kid);
+      totalCount += subtreeCount.get(kid) || 1;
+    });
+    const span = Math.max(selfSpan, childTotal);
+    subtreeSpan.set(id, span);
+    subtreeCount.set(id, totalCount);
+    return span;
+  };
+  forestRoots.forEach(measure);
+
+  const crossOf = new Map();
+  const place = (id, startCross) => {
+    const span = subtreeSpan.get(id) || crossSpan(id);
+    const kids = tree.get(id) || [];
+    if (!kids.length) {
+      const center = startCross + span / 2;
+      crossOf.set(id, center);
+      return center;
+    }
+    let childTotal = 0;
+    const kidSpans = kids.map((kid, index) => {
+      const kidSpan = subtreeSpan.get(kid) || crossSpan(kid);
+      if (index > 0) childTotal += edgeSiblingGap;
+      childTotal += kidSpan;
+      return kidSpan;
+    });
+    let cursor = startCross + (span - childTotal) / 2;
+    const childCenters = kids.map((kid, index) => {
+      const kidSpan = kidSpans[index];
+      const center = place(kid, cursor);
+      cursor += kidSpan + edgeSiblingGap;
+      return center;
+    });
+    if (kids.length >= 2) {
+      const counts = kids.map((kid) => subtreeCount.get(kid) || 1);
+      const maxCount = Math.max(...counts);
+      const minCount = Math.min(...counts);
+      if (maxCount > minCount) {
+        const primaryIndex = counts.indexOf(maxCount);
+        const center = childCenters[primaryIndex];
+        crossOf.set(id, center);
+        return center;
+      }
+    }
     const center = (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
     crossOf.set(id, center);
     return center;
   };
-  forestRoots.forEach((root) => {
-    place(root);
-    cursor += siblingGap;
+
+  let rootCursor = 0;
+  forestRoots.forEach((root, index) => {
+    if (index > 0) rootCursor += edgeSiblingGap;
+    const span = subtreeSpan.get(root) || crossSpan(root);
+    place(root, rootCursor);
+    rootCursor += span;
   });
+
+  let maxDepth = 0;
+  const maxMainAtDepth = new Map();
+  crossOf.forEach((_cross, id) => {
+    const d = depth.get(id) || 0;
+    if (d > maxDepth) maxDepth = d;
+    const current = maxMainAtDepth.get(d) || 0;
+    const span = mainSpan(id);
+    if (span > current) maxMainAtDepth.set(d, span);
+  });
+
+  const mainCenterAtDepth = new Map([[0, 0]]);
+  for (let d = 1; d <= maxDepth; d += 1) {
+    const prevCenter = mainCenterAtDepth.get(d - 1) || 0;
+    const prevSpan = maxMainAtDepth.get(d - 1) || 160;
+    const currSpan = maxMainAtDepth.get(d) || 160;
+    const step = hasExplicitLevel
+      ? Math.max(explicitLevelGap, (prevSpan + currSpan) / 2 + 24)
+      : (prevSpan + currSpan) / 2 + DEFAULT_LEVEL_EDGE_GAP;
+    mainCenterAtDepth.set(d, prevCenter + step * dir.sign);
+  }
 
   const centers = new Map();
   crossOf.forEach((cross, id) => {
-    const main = (depth.get(id) || 0) * levelGap * dir.sign;
+    const main = mainCenterAtDepth.get(depth.get(id) || 0) || 0;
     centers.set(
       id,
       dir.main === 'x' ? { centerX: main, centerY: cross } : { centerX: cross, centerY: main },

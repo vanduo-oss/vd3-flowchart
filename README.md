@@ -1,12 +1,14 @@
 # @vanduo-oss/vd3-flowchart
 
+<a href="https://snyk.io/?utm_source=open-source&utm_medium=pg-ptr&utm_campaign=ref-2501-osp&utm_content=pg-cta"><img src="https://raw.githubusercontent.com/vanduo-oss/vd3-flowchart/main/assets/scanned-by-snyk.png" alt="Scanned by Snyk" width="206" height="141"></a>
+
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Vanduo **flowchart** for Vue 3: a node/edge editor with undo/redo, layout
 modes, and a framework-agnostic core. Extracted 1-to-1 from
 `@vanduo-oss/vd3-cbun` flowchart **1.2.0**.
 
-**Status: 1.5.0.** `VD_FLOWCHART_VERSION` tracks the package release.
+**Status: 1.5.1.** `VD_FLOWCHART_VERSION` tracks the package release.
 `FLOWCHART_DOCUMENT_VERSION` (currently `1.3.0`) is the value `toJSON()`
 writes. Do not reset either independently without a compatibility plan.
 
@@ -50,7 +52,7 @@ if anything but `vue` is externalized. The package declares
 
 ## Version policy
 
-`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.5.0`). Bump those
+`package.json` version **is** `VD_FLOWCHART_VERSION` (`1.5.1`). Bump those
 together for a package release. Keep `FLOWCHART_DOCUMENT_VERSION` unchanged
 unless the serialized schema changes; add fixtures and explicit compatibility
 rules for a format change. Unversioned 1.x documents through 1.3.0 still load;
@@ -144,6 +146,9 @@ Tokens consumed include `--vd-bg-primary`, `--vd-bg-secondary`,
 
 ## Security
 
+- **Open-source scanning** — this repo is monitored with
+  [Snyk](https://snyk.io/?utm_source=open-source&utm_medium=pg-ptr&utm_campaign=ref-2501-osp&utm_content=pg-cta)
+  (thanks for their support of open source).
 - **No bundled dependencies** — beyond the `vue` peer, nothing is bundled; the
   build fails if any other module is externalized or any `node_modules` input
   is bundled.

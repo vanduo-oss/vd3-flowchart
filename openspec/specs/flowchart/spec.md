@@ -157,6 +157,29 @@ Panels, nodes, handles, and inspector chrome MUST theme through
 - **WHEN** panel and node chrome are inspected
 - **THEN** their backgrounds follow the dark `--vd-bg-*` values
 
+#### Scenario: dark idle node stroke stays visible
+
+- **GIVEN** `[data-theme="dark"]` (or dark `prefers-color-scheme` without a light theme override)
+- **WHEN** idle `--vd-flowchart-node-stroke` is inspected
+- **THEN** it MUST resolve through an accent-leaning `color-mix` so outlines stay
+  readable without hover or selection
+- **AND** hosts MAY still override `--vd-flowchart-node-stroke`
+
+### Requirement: inline text edit keeps shape silhouette
+
+While a non-rect shape node is being edited, the SVG shape MUST remain visible.
+The HTML text editor MUST NOT paint an opaque rectangular chrome that hides the
+silhouette. Circle and diamond editors MUST use shape-matched CSS (`border-radius`
+or `clip-path`). Textbox, edge, and label editors MAY keep an opaque panel.
+
+#### Scenario: circle edit keeps the ellipse
+
+- **GIVEN** an editable circle node
+- **WHEN** inline text edit starts
+- **THEN** the node still has `.is-editing` and an ellipse `.vd-flowchart-node-shape`
+- **AND** the editor has class `vd-flowchart-text-editor--circle`
+- **AND** the editor background is transparent
+
 ### Requirement: connection handles sit outside the node
 
 The editor SHALL draw one connection handle per side outside the node and
@@ -198,6 +221,23 @@ on Shift+Tab. `basic` SHALL keep Tab for focus movement.
 - **GIVEN** `keyboardShortcuts: 'basic'`
 - **WHEN** Tab is pressed with a node selected
 - **THEN** no node is added
+
+### Requirement: canvas focus does not draw a full-viewport ring
+
+The diagram canvas MUST NOT draw a `:focus` or `:focus-visible` outline while a
+node is selected, because in full-bleed hosts that ring frames the screen
+during Enter and Tab shape entry. When the canvas is focused and nothing is
+selected, it MAY show the accent focus ring. Quiet-focus helpers MAY still mark
+the canvas after inline edit closes, and Mindmap Tab that opens a new branch
+editor MUST NOT flash an intermediate canvas focus before the new textarea
+focuses.
+
+#### Scenario: Enter after label edit has no canvas outline
+
+- **GIVEN** an open node text editor
+- **WHEN** Enter commits the label
+- **THEN** `document.activeElement` is the canvas
+- **AND** `.vd-flowchart-canvas:focus-visible` has no outline
 
 ### Requirement: connection labels are editable from the keyboard
 
