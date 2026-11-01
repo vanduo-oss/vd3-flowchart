@@ -976,6 +976,12 @@
   outline-offset: -2px;
 }
 
+/* Returning from an inline editor uses quiet focus so Enter does not paint a
+   full-canvas ring. Tabbing into the canvas from outside still shows the ring. */
+.vd-flowchart-canvas.is-quiet-focus:focus-visible {
+  outline: none;
+}
+
 .vd-flowchart-sr-only {
   position: absolute;
   width: 1px;

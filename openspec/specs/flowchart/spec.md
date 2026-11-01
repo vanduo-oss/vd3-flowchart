@@ -222,6 +222,24 @@ on Shift+Tab. `basic` SHALL keep Tab for focus movement.
 - **WHEN** Tab is pressed with a node selected
 - **THEN** no node is added
 
+### Requirement: returning from inline edit uses quiet canvas focus
+
+After Enter or Escape closes an inline node or edge label editor, the canvas MAY
+receive focus so further shortcuts work, but it MUST use quiet focus
+(`.is-quiet-focus`) so the full-canvas `:focus-visible` accent ring does not
+appear. Tabbing into the canvas from outside still MAY show that ring. When
+mindmap Tab commits the current editor and opens a new branch editor, the
+implementation MUST NOT flash an intermediate canvas focus before the new
+textarea focuses.
+
+#### Scenario: Enter after label edit is quiet
+
+- **GIVEN** an open node text editor
+- **WHEN** Enter commits the label
+- **THEN** `document.activeElement` is the canvas
+- **AND** the canvas has class `is-quiet-focus`
+- **AND** `.vd-flowchart-canvas.is-quiet-focus:focus-visible` has no outline
+
 ### Requirement: connection labels are editable from the keyboard
 
 The editor SHALL select a node's connection with Shift+Arrow and edit its

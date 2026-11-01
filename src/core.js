@@ -124,7 +124,7 @@ const EDGE_STROKE_PRESETS = [
   { id: 'bold', label: 'Bold', width: 3.5 },
 ];
 
-export const VD_FLOWCHART_VERSION = '1.5.1';
+export const VD_FLOWCHART_VERSION = '1.5.2';
 /** Serialized schema version; change only when the document format changes. */
 export const FLOWCHART_DOCUMENT_VERSION = '1.3.0';
 export const FLOWCHART_NODE_TYPES = [
@@ -1523,6 +1523,7 @@ export class VdFlowchart {
     this.handleClick = this.handleClick.bind(this);
     this.handleDoubleClick = this.handleDoubleClick.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
+    this.handleCanvasBlur = this.handleCanvasBlur.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSelectionFieldInput = this.handleSelectionFieldInput.bind(this);
     this.handleSelectionFieldChange = this.handleSelectionFieldChange.bind(this);
@@ -1985,6 +1986,7 @@ export class VdFlowchart {
     this.canvasEl.addEventListener('click', this.handleClick);
     this.canvasEl.addEventListener('dblclick', this.handleDoubleClick);
     this.canvasEl.addEventListener('wheel', this.handleWheel, { passive: false });
+    this.canvasEl.addEventListener('blur', this.handleCanvasBlur);
     this.root.addEventListener('keydown', this.handleKeyDown, true);
     window.addEventListener('pointerup', this.handlePointerUp);
     window.addEventListener('resize', this.handleResize);
@@ -2004,6 +2006,7 @@ export class VdFlowchart {
     this.canvasEl.removeEventListener('click', this.handleClick);
     this.canvasEl.removeEventListener('dblclick', this.handleDoubleClick);
     this.canvasEl.removeEventListener('wheel', this.handleWheel);
+    this.canvasEl.removeEventListener('blur', this.handleCanvasBlur);
     this.root.removeEventListener('keydown', this.handleKeyDown, true);
     window.removeEventListener('pointerup', this.handlePointerUp);
     window.removeEventListener('resize', this.handleResize);
@@ -2012,6 +2015,21 @@ export class VdFlowchart {
   handleResize() {
     if (this.destroyed) return;
     this.render({ inspector: false, json: false });
+  }
+
+  /**
+   * Focus the diagram canvas. Quiet focus returns from an inline editor without
+   * painting the full-canvas `:focus-visible` ring (see `.is-quiet-focus`).
+   */
+  focusCanvas(options = {}) {
+    if (!this.canvasEl || this.destroyed) return;
+    const quiet = options.quiet === true;
+    this.canvasEl.classList.toggle('is-quiet-focus', quiet);
+    this.canvasEl.focus({ preventScroll: true });
+  }
+
+  handleCanvasBlur() {
+    this.canvasEl?.classList.remove('is-quiet-focus');
   }
 
   updatePaletteState() {
@@ -3710,7 +3728,7 @@ export class VdFlowchart {
       if (event.key === 'Escape' || event.key === 'Enter') {
         event.preventDefault();
         this.stopTextEdit({ commit: event.key === 'Enter' });
-        this.canvasEl.focus();
+        this.focusCanvas({ quiet: true });
       }
     });
     textarea.addEventListener('blur', () => {
@@ -3740,7 +3758,7 @@ export class VdFlowchart {
     if (event.key === 'Escape') {
       event.preventDefault();
       this.stopTextEdit({ commit: false });
-      this.canvasEl.focus();
+      this.focusCanvas({ quiet: true });
       return;
     }
     if (event.key === 'Enter') {
@@ -3749,13 +3767,13 @@ export class VdFlowchart {
       if (!commits) return;
       event.preventDefault();
       this.stopTextEdit({ commit: true });
-      this.canvasEl.focus();
+      this.focusCanvas({ quiet: true });
       return;
     }
     if (event.key === 'Tab' && mindmap && !event.shiftKey && !event.altKey && !event.ctrlKey) {
       event.preventDefault();
       this.stopTextEdit({ commit: true });
-      this.canvasEl.focus();
+      // Skip canvas focus — the new branch editor takes focus next.
       this.insertBranchNode(node.id, { edit: true });
     }
   }

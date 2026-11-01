@@ -38,8 +38,8 @@ afterEach(() => {
 });
 
 describe('flowchart serialization — VERSION manifest sync', () => {
-  it('exposes VD_FLOWCHART_VERSION === "1.5.1"', () => {
-    expect(VD_FLOWCHART_VERSION).toBe('1.5.1');
+  it('exposes VD_FLOWCHART_VERSION === "1.5.2"', () => {
+    expect(VD_FLOWCHART_VERSION).toBe('1.5.2');
   });
 
   it('keeps FLOWCHART_DOCUMENT_VERSION at 1.3.0', () => {

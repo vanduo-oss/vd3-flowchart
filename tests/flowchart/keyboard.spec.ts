@@ -162,6 +162,18 @@ describe('mind-map keyboard model', () => {
     expect(instance.toJSON().edges).toHaveLength(0);
   });
 
+  it('Tab from an open editor opens the child without leaving quiet canvas focus mid-flight', () => {
+    const { instance, element, canvas } = editor({ nodes: [tree.nodes[0]] });
+    instance.startTextEdit('root');
+    const parentEditor = textEditor(element)!;
+    parentEditor.value = 'Root';
+    press(parentEditor, 'Tab');
+    expect(textEditor(element)).not.toBeNull();
+    expect(document.activeElement).toBe(textEditor(element));
+    expect(canvas.classList.contains('is-quiet-focus')).toBe(false);
+    expect(instance.toJSON().nodes).toHaveLength(2);
+  });
+
   it('builds a map with Tab, typing, Enter, and Enter', () => {
     const { instance, element, canvas } = editor({ nodes: [tree.nodes[0]] });
     instance.selectNode('root');
@@ -171,6 +183,7 @@ describe('mind-map keyboard model', () => {
     press(first, 'Enter');
     expect(textEditor(element)).toBeNull();
     expect(document.activeElement).toBe(canvas);
+    expect(canvas.classList.contains('is-quiet-focus')).toBe(true);
     const alpha = instance.toJSON().nodes[1];
     expect(alpha.text).toBe('Alpha');
 

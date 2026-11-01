@@ -2,6 +2,15 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
+## 1.5.2 — 2026-11-01
+
+### Fixed
+
+- Committing an inline label with Enter (or Esc) returns focus to the canvas
+  without the full-canvas `:focus-visible` accent ring. Tabbing into the canvas
+  from outside still shows the ring. Mindmap Tab that opens a new branch editor
+  skips the intermediate canvas focus flash.
+
 ## 1.5.1 — 2026-11-01
 
 ### Fixed
