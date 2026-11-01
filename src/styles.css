@@ -970,15 +970,15 @@
   background: var(--vd-flowchart-surface);
 }
 
-.vd-flowchart-outline :focus-visible,
-.vd-flowchart-canvas:focus-visible {
+.vd-flowchart-outline :focus-visible {
   outline: 2px solid var(--vd-flowchart-accent);
   outline-offset: -2px;
 }
 
-/* Returning from an inline editor uses quiet focus so Enter does not paint a
-   full-canvas ring. Tabbing into the canvas from outside still shows the ring. */
-.vd-flowchart-canvas.is-quiet-focus:focus-visible {
+/* The canvas is often full-bleed; selected nodes and the status line already
+   show keyboard state, so never draw a viewport-wide focus ring on it. */
+.vd-flowchart-canvas:focus,
+.vd-flowchart-canvas:focus-visible {
   outline: none;
 }
 
