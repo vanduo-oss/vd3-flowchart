@@ -105,6 +105,42 @@ describe('computeLayout — tree', () => {
     const result = computeLayout(doc, 'tree', { direction: 'down' });
     expect(centerOf(result, doc, 'child').y).toBeGreaterThan(centerOf(result, doc, 'root').y);
   });
+
+  it('spaces wide siblings by their widths so downward branches never overlap horizontally', () => {
+    const doc: Doc = {
+      nodes: [
+        node('decide', 0, 0, 184, 120),
+        node('leftBranch', 0, 0, 180, 96),
+        node('rightBranch', 0, 0, 180, 96),
+      ],
+      edges: [edge('decide', 'leftBranch'), edge('decide', 'rightBranch')],
+    };
+    const result = computeLayout(doc, 'tree', { direction: 'down' });
+    const leftPos = result.get('leftBranch')!;
+    const rightPos = result.get('rightBranch')!;
+    expect(rightPos.x).toBeGreaterThanOrEqual(leftPos.x + 180 + 48);
+  });
+
+  it('places a diamond join below its longest incoming branch', () => {
+    const doc: Doc = {
+      nodes: [
+        node('start', 0, 0, 180, 96),
+        node('decide', 0, 0, 184, 120),
+        node('stepA', 0, 0, 180, 96),
+        node('stepB', 0, 0, 180, 96),
+        node('endNode', 0, 0, 180, 96),
+      ],
+      edges: [
+        edge('start', 'decide'),
+        edge('decide', 'endNode'),
+        edge('decide', 'stepA'),
+        edge('stepA', 'stepB'),
+        edge('stepB', 'endNode'),
+      ],
+    };
+    const result = computeLayout(doc, 'tree', { direction: 'down' });
+    expect(centerOf(result, doc, 'endNode').y).toBeGreaterThan(centerOf(result, doc, 'stepB').y);
+  });
 });
 
 describe('computeLayout — grid', () => {

@@ -1028,10 +1028,43 @@ function getOrthogonalPoints(
 ) {
   const fromNormal = getPortNormal(fromPort);
   const toNormal = getPortNormal(toPort);
-  const fromStub = offsetPoint(fromPoint, fromNormal, metrics.stub);
-  const toStub = offsetPoint(toPoint, toNormal, metrics.stub);
   const sourceHorizontal = isHorizontalPort(fromPort);
   const targetHorizontal = isHorizontalPort(toPort);
+  const minStub = 4 * (metrics.scale || 1);
+  let fromStubLen = metrics.stub;
+  let toStubLen = metrics.stub;
+
+  if (sourceHorizontal && targetHorizontal && fromNormal.x === -toNormal.x) {
+    const span = (toPoint.x - fromPoint.x) * fromNormal.x;
+    if (span > 0) {
+      const fitted = Math.min(metrics.stub, Math.max(minStub, span * 0.45));
+      fromStubLen = fitted;
+      toStubLen = fitted;
+    }
+  } else if (!sourceHorizontal && !targetHorizontal && fromNormal.y === -toNormal.y) {
+    const span = (toPoint.y - fromPoint.y) * fromNormal.y;
+    if (span > 0) {
+      const fitted = Math.min(metrics.stub, Math.max(minStub, span * 0.45));
+      fromStubLen = fitted;
+      toStubLen = fitted;
+    }
+  } else if (sourceHorizontal !== targetHorizontal) {
+    const spanFrom = sourceHorizontal
+      ? (toPoint.x - fromPoint.x) * fromNormal.x
+      : (toPoint.y - fromPoint.y) * fromNormal.y;
+    const spanTo = targetHorizontal
+      ? (fromPoint.x - toPoint.x) * toNormal.x
+      : (fromPoint.y - toPoint.y) * toNormal.y;
+    if (spanFrom > 0 && spanFrom < metrics.stub) {
+      fromStubLen = Math.max(minStub, spanFrom * 0.5);
+    }
+    if (spanTo > 0 && spanTo < metrics.stub) {
+      toStubLen = Math.max(minStub, spanTo * 0.5);
+    }
+  }
+
+  const fromStub = offsetPoint(fromPoint, fromNormal, fromStubLen);
+  const toStub = offsetPoint(toPoint, toNormal, toStubLen);
   const mids = [];
 
   if (sourceHorizontal && targetHorizontal) {
@@ -5301,7 +5334,10 @@ export class VdFlowchart {
       }
     });
 
-    const rerouted = options.reroutePorts === false ? false : this.rerouteEdgePorts();
+    const rerouted =
+      options.reroutePorts === false
+        ? false
+        : this.rerouteEdgePorts(resolvedMode === 'tree' ? options.direction || 'right' : null);
     if (!changed && !rerouted) return this;
 
     this.render();
@@ -5317,8 +5353,22 @@ export class VdFlowchart {
   // Re-pick each edge's from/to port from the nodes' current centers, so a
   // freshly laid-out graph attaches connectors on sensible sides. Returns
   // whether any port actually changed.
-  rerouteEdgePorts() {
+  rerouteEdgePorts(flowDirection = null) {
     let changed = false;
+    const flow =
+      flowDirection === 'down' ||
+      flowDirection === 'up' ||
+      flowDirection === 'left' ||
+      flowDirection === 'right'
+        ? flowDirection
+        : null;
+    const outDegree = new Map();
+    if (flow) {
+      this.documentData.edges.forEach((edge) => {
+        const fromId = edge?.from?.nodeId;
+        if (fromId) outDegree.set(fromId, (outDegree.get(fromId) || 0) + 1);
+      });
+    }
     this.documentData.edges.forEach((edge) => {
       const fromNode = this.findNode(edge.from.nodeId);
       const toNode = this.findNode(edge.to.nodeId);
@@ -5328,8 +5378,97 @@ export class VdFlowchart {
         y: fromNode.y + fromNode.height / 2,
       };
       const toCenter = { x: toNode.x + toNode.width / 2, y: toNode.y + toNode.height / 2 };
-      const nextFrom = getPortByDirection(fromNode, toCenter).port;
-      const nextTo = getPortByDirection(toNode, fromCenter).port;
+      let nextFrom;
+      let nextTo;
+      if (flow) {
+        const dx = toCenter.x - fromCenter.x;
+        const dy = toCenter.y - fromCenter.y;
+        const vertical = flow === 'down' || flow === 'up';
+        const sign = flow === 'up' || flow === 'left' ? -1 : 1;
+        const mainDelta = (vertical ? dy : dx) * sign;
+        const crossDelta = vertical ? dx : dy;
+        const isDiamondBranch =
+          fromNode.type === 'diamond' && (outDegree.get(fromNode.id) || 0) >= 2;
+        if (mainDelta < -8) {
+          const allNodes = this.documentData.nodes;
+          if (vertical) {
+            const minX = Math.min(fromNode.x, toNode.x);
+            const maxRight = Math.max(fromNode.x + fromNode.width, toNode.x + toNode.width);
+            const minY = Math.min(fromCenter.y, toCenter.y) - 8;
+            const maxY = Math.max(fromCenter.y, toCenter.y) + 8;
+            let rightCount = 0;
+            let leftCount = 0;
+            allNodes.forEach((n) => {
+              if (!n || n.id === fromNode.id || n.id === toNode.id) return;
+              const ny = n.y + n.height / 2;
+              if (ny < minY || ny > maxY) return;
+              const nx = n.x + n.width / 2;
+              if (nx >= maxRight - 20) rightCount += 1;
+              if (nx <= minX + 20) leftCount += 1;
+            });
+            const side =
+              leftCount < rightCount
+                ? 'left'
+                : rightCount < leftCount
+                  ? 'right'
+                  : crossDelta < -8
+                    ? 'left'
+                    : 'right';
+            nextFrom = side;
+            nextTo = side;
+          } else {
+            const minY = Math.min(fromNode.y, toNode.y);
+            const maxBottom = Math.max(fromNode.y + fromNode.height, toNode.y + toNode.height);
+            const minX = Math.min(fromCenter.x, toCenter.x) - 8;
+            const maxX = Math.max(fromCenter.x, toCenter.x) + 8;
+            let bottomCount = 0;
+            let topCount = 0;
+            allNodes.forEach((n) => {
+              if (!n || n.id === fromNode.id || n.id === toNode.id) return;
+              const nx = n.x + n.width / 2;
+              if (nx < minX || nx > maxX) return;
+              const ny = n.y + n.height / 2;
+              if (ny >= maxBottom - 20) bottomCount += 1;
+              if (ny <= minY + 20) topCount += 1;
+            });
+            const side =
+              topCount < bottomCount
+                ? 'top'
+                : bottomCount < topCount
+                  ? 'bottom'
+                  : crossDelta < -8
+                    ? 'top'
+                    : 'bottom';
+            nextFrom = side;
+            nextTo = side;
+          }
+        } else if (mainDelta >= 12) {
+          if (vertical) {
+            nextTo = sign > 0 ? 'top' : 'bottom';
+            if (isDiamondBranch && Math.abs(crossDelta) >= fromNode.width * 0.45) {
+              nextFrom = crossDelta > 0 ? 'right' : 'left';
+            } else {
+              nextFrom = sign > 0 ? 'bottom' : 'top';
+            }
+          } else {
+            nextTo = sign > 0 ? 'left' : 'right';
+            if (isDiamondBranch && Math.abs(crossDelta) >= fromNode.height * 0.45) {
+              nextFrom = crossDelta > 0 ? 'bottom' : 'top';
+            } else {
+              nextFrom = sign > 0 ? 'right' : 'left';
+            }
+          }
+        } else if (vertical) {
+          nextFrom = dx >= 0 ? 'right' : 'left';
+          nextTo = dx >= 0 ? 'left' : 'right';
+        } else {
+          nextFrom = dy >= 0 ? 'bottom' : 'top';
+          nextTo = dy >= 0 ? 'top' : 'bottom';
+        }
+      } else {
+        nextFrom = getPortByDirection(fromNode, toCenter).port;
+        nextTo = getPortByDirection(toNode, fromCenter).port;
+      }
       if (nextFrom !== edge.from.port || nextTo !== edge.to.port) {
         edge.from.port = nextFrom;
         edge.to.port = nextTo;
