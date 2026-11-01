@@ -124,7 +124,7 @@ const EDGE_STROKE_PRESETS = [
   { id: 'bold', label: 'Bold', width: 3.5 },
 ];
 
-export const VD_FLOWCHART_VERSION = '1.5.0';
+export const VD_FLOWCHART_VERSION = '1.5.1';
 /** Serialized schema version; change only when the document format changes. */
 export const FLOWCHART_DOCUMENT_VERSION = '1.3.0';
 export const FLOWCHART_NODE_TYPES = [

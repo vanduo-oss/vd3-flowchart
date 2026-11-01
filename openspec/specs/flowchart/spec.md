@@ -157,6 +157,29 @@ Panels, nodes, handles, and inspector chrome MUST theme through
 - **WHEN** panel and node chrome are inspected
 - **THEN** their backgrounds follow the dark `--vd-bg-*` values
 
+#### Scenario: dark idle node stroke stays visible
+
+- **GIVEN** `[data-theme="dark"]` (or dark `prefers-color-scheme` without a light theme override)
+- **WHEN** idle `--vd-flowchart-node-stroke` is inspected
+- **THEN** it MUST resolve through an accent-leaning `color-mix` so outlines stay
+  readable without hover or selection
+- **AND** hosts MAY still override `--vd-flowchart-node-stroke`
+
+### Requirement: inline text edit keeps shape silhouette
+
+While a non-rect shape node is being edited, the SVG shape MUST remain visible.
+The HTML text editor MUST NOT paint an opaque rectangular chrome that hides the
+silhouette. Circle and diamond editors MUST use shape-matched CSS (`border-radius`
+or `clip-path`). Textbox, edge, and label editors MAY keep an opaque panel.
+
+#### Scenario: circle edit keeps the ellipse
+
+- **GIVEN** an editable circle node
+- **WHEN** inline text edit starts
+- **THEN** the node still has `.is-editing` and an ellipse `.vd-flowchart-node-shape`
+- **AND** the editor has class `vd-flowchart-text-editor--circle`
+- **AND** the editor background is transparent
+
 ### Requirement: connection handles sit outside the node
 
 The editor SHALL draw one connection handle per side outside the node and

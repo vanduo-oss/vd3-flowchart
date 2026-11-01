@@ -2,6 +2,16 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
+## 1.5.1 — 2026-11-01
+
+### Fixed
+
+- Inline text editors for shapes use transparent chrome so circles and diamonds
+  keep their SVG silhouette while typing (textbox, edge, and label editors keep
+  an opaque panel).
+- Dark theme idle node strokes lean on the accent color so outlines stay visible
+  without hover or selection. Hosts may still override `--vd-flowchart-node-stroke`.
+
 ## 1.5.0 — 2026-10-25
 
 ### Added
