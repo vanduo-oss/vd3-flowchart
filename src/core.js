@@ -1037,14 +1037,14 @@ function getOrthogonalPoints(
   if (sourceHorizontal && targetHorizontal && fromNormal.x === -toNormal.x) {
     const span = (toPoint.x - fromPoint.x) * fromNormal.x;
     if (span > 0) {
-      const fitted = Math.min(metrics.stub, Math.max(minStub, span * 0.45));
+      const fitted = Math.min(metrics.stub, span * 0.45, span / 2);
       fromStubLen = fitted;
       toStubLen = fitted;
     }
   } else if (!sourceHorizontal && !targetHorizontal && fromNormal.y === -toNormal.y) {
     const span = (toPoint.y - fromPoint.y) * fromNormal.y;
     if (span > 0) {
-      const fitted = Math.min(metrics.stub, Math.max(minStub, span * 0.45));
+      const fitted = Math.min(metrics.stub, span * 0.45, span / 2);
       fromStubLen = fitted;
       toStubLen = fitted;
     }
@@ -1056,10 +1056,10 @@ function getOrthogonalPoints(
       ? (fromPoint.x - toPoint.x) * toNormal.x
       : (fromPoint.y - toPoint.y) * toNormal.y;
     if (spanFrom > 0 && spanFrom < metrics.stub) {
-      fromStubLen = Math.max(minStub, spanFrom * 0.5);
+      fromStubLen = Math.min(spanFrom / 2, Math.max(minStub, spanFrom * 0.5));
     }
     if (spanTo > 0 && spanTo < metrics.stub) {
-      toStubLen = Math.max(minStub, spanTo * 0.5);
+      toStubLen = Math.min(spanTo / 2, Math.max(minStub, spanTo * 0.5));
     }
   }
 

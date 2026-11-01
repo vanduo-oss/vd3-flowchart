@@ -970,15 +970,16 @@
   background: var(--vd-flowchart-surface);
 }
 
-.vd-flowchart-outline :focus-visible {
+.vd-flowchart-outline :focus-visible,
+.vd-flowchart-canvas:focus-visible {
   outline: 2px solid var(--vd-flowchart-accent);
   outline-offset: -2px;
 }
 
-/* The canvas is often full-bleed; selected nodes and the status line already
-   show keyboard state, so never draw a viewport-wide focus ring on it. */
-.vd-flowchart-canvas:focus,
-.vd-flowchart-canvas:focus-visible {
+/* The canvas is often full-bleed. Hide the viewport ring once a node is
+   selected (Enter/Tab shape entry). An empty focused canvas still shows it. */
+.vd-flowchart-canvas:focus-visible:has(.is-selected),
+.vd-flowchart-canvas:focus:has(.is-selected) {
   outline: none;
 }
 

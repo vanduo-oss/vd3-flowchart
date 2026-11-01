@@ -224,12 +224,13 @@ on Shift+Tab. `basic` SHALL keep Tab for focus movement.
 
 ### Requirement: canvas focus does not draw a full-viewport ring
 
-The diagram canvas MUST NOT draw a `:focus` or `:focus-visible` outline on
-`.vd-flowchart-canvas` (in full-bleed hosts it frames the entire screen and
-interrupts repeated Enter/Tab shape entry). Selected nodes and the status line
-communicate keyboard focus instead. Quiet-focus helpers MAY still mark the
-canvas after inline edit closes, and Mindmap Tab that opens a new branch editor
-MUST NOT flash an intermediate canvas focus before the new textarea focuses.
+The diagram canvas MUST NOT draw a `:focus` or `:focus-visible` outline while a
+node is selected, because in full-bleed hosts that ring frames the screen
+during Enter and Tab shape entry. When the canvas is focused and nothing is
+selected, it MAY show the accent focus ring. Quiet-focus helpers MAY still mark
+the canvas after inline edit closes, and Mindmap Tab that opens a new branch
+editor MUST NOT flash an intermediate canvas focus before the new textarea
+focuses.
 
 #### Scenario: Enter after label edit has no canvas outline
 
