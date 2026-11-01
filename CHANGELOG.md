@@ -2,24 +2,23 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
-## 1.5.2 — 2026-11-01
-
-### Fixed
-
-- Committing an inline label with Enter (or Esc) returns focus to the canvas
-  without the full-canvas `:focus-visible` accent ring. Tabbing into the canvas
-  from outside still shows the ring. Mindmap Tab that opens a new branch editor
-  skips the intermediate canvas focus flash.
-
 ## 1.5.1 — 2026-11-01
 
 ### Fixed
 
 - Inline text editors for shapes use transparent chrome so circles and diamonds
-  keep their SVG silhouette while typing (textbox, edge, and label editors keep
-  an opaque panel).
+  keep their SVG silhouette while typing. Textbox, edge, and label editors keep
+  an opaque panel.
 - Dark theme idle node strokes lean on the accent color so outlines stay visible
   without hover or selection. Hosts may still override `--vd-flowchart-node-stroke`.
+- The diagram canvas no longer draws a full-viewport focus ring. Mindmap Tab that
+  opens a new branch editor skips the intermediate canvas focus flash.
+- Tree layout measures node size. Rank and sibling gaps stay clear of the boxes,
+  and a decision with one deep branch keeps that branch on the main spine.
+- Facing orthogonal connectors shorten their stubs when two shapes sit closer
+  than two full stubs, so the route does not loop around the pair.
+- Tree layout re-picks ports from the flow: diamond side branches leave the side
+  ports, and a reverse loop uses the quieter side of the spine.
 
 ## 1.5.0 — 2026-10-25
 

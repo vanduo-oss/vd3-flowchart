@@ -8,7 +8,7 @@ publish surface for `@vanduo-oss/vd3-flowchart`.
 
 ### Requirement: package identity and exports contract
 
-The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.5.2`, MIT-licensed, ESM
+The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.5.1`, MIT-licensed, ESM
 (`type: "module"`), with `vue >=3.3.0` declared as a REQUIRED peer dependency
 (no `peerDependenciesMeta` optionality). It MUST set
 `publishConfig: { "access": "public" }`. The `exports` map SHALL declare `.`
@@ -41,7 +41,7 @@ The package MUST be `@vanduo-oss/vd3-flowchart`, version `1.5.2`, MIT-licensed, 
 
 - **GIVEN** the release-ready `package.json`
 - **WHEN** its publish-relevant fields are inspected
-- **THEN** `version` is `1.5.2` and `publishConfig.access` is `"public"`
+- **THEN** `version` is `1.5.1` and `publishConfig.access` is `"public"`
 
 ### Requirement: toolchain baseline
 
@@ -78,7 +78,7 @@ in `pnpm-workspace.yaml`.
 
 ### Requirement: version constant equals package version
 
-`VD_FLOWCHART_VERSION` MUST equal `package.json` `version` and MUST be `'1.5.2'`.
+`VD_FLOWCHART_VERSION` MUST equal `package.json` `version` and MUST be `'1.5.1'`.
 An automated test MUST assert that sync. There is no separate
 `component-versions.json`.
 
@@ -86,7 +86,7 @@ An automated test MUST assert that sync. There is no separate
 
 - **GIVEN** `src/core.js` and `package.json`
 - **WHEN** `VD_FLOWCHART_VERSION` is compared against `package.json` `version`
-- **THEN** both are exactly `'1.5.2'`
+- **THEN** both are exactly `'1.5.1'`
 
 ### Requirement: CI pipeline
 
@@ -163,7 +163,7 @@ errors.
 The repo MUST ship `README.md`, `SKILL.md`, `CHANGELOG.md`, `CONTRIBUTING.md`,
 and the MIT `LICENSE`. Published files MUST be `dist`, `README.md`,
 `SKILL.md`, `CHANGELOG.md`, `LICENSE`, `recipes`, and `styles.d.ts`.
-`CHANGELOG.md` MUST carry dated `## 1.4.0`, `## 1.5.0`, `## 1.5.1`, and `## 1.5.2` entries. `SKILL.md` MUST carry
+`CHANGELOG.md` MUST carry dated `## 1.4.0`, `## 1.5.0`, and `## 1.5.1` entries. `SKILL.md` MUST carry
 Agent Skills frontmatter.
 
 #### Scenario: npm pack ships the docs and excludes internals
