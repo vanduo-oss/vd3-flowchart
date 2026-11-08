@@ -3922,7 +3922,7 @@ export class VdFlowchart {
     const hysteresisMargin = CONNECTION_HYSTERESIS / this.documentData.viewport.scale;
 
     const best = this.getVisibleNodes().reduce((candidate, node) => {
-      if (node.id === excludeNodeId) return candidate;
+      if (node.id === excludeNodeId || node.locked) return candidate;
       const distanceToBounds = getDistanceToNodeBounds(node, worldPoint);
       if (distanceToBounds > snapPadding) return candidate;
       const nearest = pickPortForNode(node, worldPoint, referencePoint);
@@ -3942,7 +3942,7 @@ export class VdFlowchart {
     if (!previousSnap || !best) return best;
 
     const previousNode = this.findNode(previousSnap.nodeId);
-    if (!previousNode || previousNode.id === excludeNodeId) return best;
+    if (!previousNode || previousNode.id === excludeNodeId || previousNode.locked) return best;
 
     const distanceToBounds = getDistanceToNodeBounds(previousNode, worldPoint);
     if (distanceToBounds > snapPadding) return best;
@@ -6859,8 +6859,10 @@ export class VdFlowchart {
         const preset = fill.match(/--vd-flowchart-palette-([a-z]+)-edge/);
         if (preset) {
           const fallback = FLOWCHART_COLOR_PRESET_FALLBACKS[preset[1]]?.edge;
-          if (fallback) shape.setAttribute('fill', fallback);
-          return;
+          if (fallback) {
+            shape.setAttribute('fill', fallback);
+            return;
+          }
         }
         if (fill.includes('var(')) shape.setAttribute('fill', '#475569');
       });
