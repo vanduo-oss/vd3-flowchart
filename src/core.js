@@ -219,8 +219,12 @@ function sanitizeCssColor(value) {
   if (typeof value !== 'string') return '';
   const trimmed = value.trim();
   if (!trimmed || trimmed === 'default') return '';
-  if (/[;{}<>\\"]/i.test(trimmed) || /url\s*\(/i.test(trimmed)) return '';
-  return trimmed.slice(0, 64);
+  if (trimmed.length > 64 || /\\/.test(trimmed)) return '';
+  if (/[;{}<>"'`]/.test(trimmed) || /url\s*\(|expression\s*\(|javascript\s*:/i.test(trimmed)) {
+    return '';
+  }
+  if (!/^[#a-z0-9(),.%\s/+-]+$/i.test(trimmed)) return '';
+  return trimmed;
 }
 
 function normalizeEdgeColor(value) {
@@ -1767,6 +1771,7 @@ export class VdFlowchart {
     this.handleSelectionActionClick = this.handleSelectionActionClick.bind(this);
     this.handleJsonActionClick = this.handleJsonActionClick.bind(this);
     this.handleResize = this.handleResize.bind(this);
+    this.handleOutsidePointerDown = this.handleOutsidePointerDown.bind(this);
 
     this.buildShell();
     this.bindEvents();
@@ -2256,6 +2261,7 @@ export class VdFlowchart {
     this.canvasEl.addEventListener('blur', this.handleCanvasBlur);
     this.root.addEventListener('keydown', this.handleKeyDown, true);
     window.addEventListener('pointerup', this.handlePointerUp);
+    window.addEventListener('pointerdown', this.handleOutsidePointerDown);
     window.addEventListener('resize', this.handleResize);
   }
 
@@ -2277,7 +2283,14 @@ export class VdFlowchart {
     this.canvasEl.removeEventListener('blur', this.handleCanvasBlur);
     this.root.removeEventListener('keydown', this.handleKeyDown, true);
     window.removeEventListener('pointerup', this.handlePointerUp);
+    window.removeEventListener('pointerdown', this.handleOutsidePointerDown);
     window.removeEventListener('resize', this.handleResize);
+  }
+
+  handleOutsidePointerDown(event) {
+    if (!this.colorPopoverOpen || this.destroyed) return;
+    if (event.target?.closest?.('.vd-flowchart-color-popover-wrap')) return;
+    this.toggleColorPopover(false);
   }
 
   handleResize() {
@@ -3280,6 +3293,8 @@ export class VdFlowchart {
       const fromNode = this.findNode(edge.from.nodeId);
       const toNode = this.findNode(edge.to.nodeId);
       if (!fromNode || !toNode) return;
+      const endpointNode = endpoint === 'from' ? fromNode : toNode;
+      if (endpointNode.locked) return;
 
       this.reconnectEdgeId = edgeId;
       this.select({ kind: 'edge', id: edgeId });
@@ -3337,7 +3352,7 @@ export class VdFlowchart {
       const nodeId = portTarget.getAttribute('data-node-id');
       const port = portTarget.getAttribute('data-port');
       const node = this.findNode(nodeId);
-      if (!node) return;
+      if (!node || node.locked) return;
 
       const sourcePoint = getPortPosition(node, port);
       this.interaction = {
@@ -5255,7 +5270,7 @@ export class VdFlowchart {
       this.selectionFields.appendChild(
         createField(
           'Color preset',
-          this.buildInspectorColorSwatches(node.color || 'default', this.readonly),
+          this.buildInspectorColorSwatches(node.color || 'default', this.readonly || isLocked),
         ),
       );
 
@@ -5263,7 +5278,7 @@ export class VdFlowchart {
       const fillInput = createElement('input', {
         value: node.fill || '',
         type: 'text',
-        disabled: this.readonly,
+        disabled: this.readonly || isLocked,
       });
       fillInput.setAttribute('data-field', 'node-fill');
       fillInput.setAttribute('placeholder', 'Fill (e.g. #dbeafe)');
@@ -5271,7 +5286,7 @@ export class VdFlowchart {
       const strokeInput = createElement('input', {
         value: node.stroke || '',
         type: 'text',
-        disabled: this.readonly,
+        disabled: this.readonly || isLocked,
       });
       strokeInput.setAttribute('data-field', 'node-stroke');
       strokeInput.setAttribute('placeholder', 'Stroke (e.g. #2563eb)');
@@ -5279,7 +5294,7 @@ export class VdFlowchart {
       const textColorInput = createElement('input', {
         value: node.textColor || '',
         type: 'text',
-        disabled: this.readonly,
+        disabled: this.readonly || isLocked,
       });
       textColorInput.setAttribute('data-field', 'node-text-color');
       textColorInput.setAttribute('placeholder', 'Text (e.g. #1e3a8a)');
@@ -6244,6 +6259,11 @@ export class VdFlowchart {
   updateNode(nodeId, patch = {}, options = {}) {
     const node = this.findNode(nodeId);
     if (!node) return null;
+    if (node.locked) {
+      const keys = Object.keys(patch);
+      const unlocking = keys.length > 0 && keys.every((key) => key === 'locked') && !patch.locked;
+      if (!unlocking) return null;
+    }
 
     const previousType = node.type;
     const previousSpec = DEFAULT_NODE_SPECS[previousType];
@@ -6489,7 +6509,7 @@ export class VdFlowchart {
     } else {
       const token = String(colorOrPatch).trim();
       if (FLOWCHART_COLOR_PRESET_SET.has(token)) {
-        patch = { color: token };
+        patch = { color: token, fill: null, stroke: null, textColor: null };
       } else {
         const css = sanitizeCssColor(token);
         if (!css) return null;
@@ -6708,7 +6728,7 @@ export class VdFlowchart {
     if (axis === 'horizontal') {
       const totalSpan = last.x + last.width - first.x;
       const totalSize = sorted.reduce((sum, node) => sum + node.width, 0);
-      const gap = (totalSpan - totalSize) / (sorted.length - 1);
+      const gap = Math.max(0, (totalSpan - totalSize) / (sorted.length - 1));
       let cursor = first.x;
       sorted.forEach((node, index) => {
         if (index > 0 && index < sorted.length - 1 && !node.locked) {
@@ -6723,7 +6743,7 @@ export class VdFlowchart {
     } else {
       const totalSpan = last.y + last.height - first.y;
       const totalSize = sorted.reduce((sum, node) => sum + node.height, 0);
-      const gap = (totalSpan - totalSize) / (sorted.length - 1);
+      const gap = Math.max(0, (totalSpan - totalSize) / (sorted.length - 1));
       let cursor = first.y;
       sorted.forEach((node, index) => {
         if (index > 0 && index < sorted.length - 1 && !node.locked) {
@@ -6836,12 +6856,13 @@ export class VdFlowchart {
       const defsClone = this.markerDefs.cloneNode(true);
       defsClone.querySelectorAll('path, circle').forEach((shape) => {
         const fill = shape.getAttribute('fill') || '';
-        if (fill.includes('--vd-flowchart-palette-')) {
-          const match = fill.match(/--vd-flowchart-palette-([a-z]+)-edge,\s*([^)]+)\)/);
-          if (match) shape.setAttribute('fill', match[2].trim());
-        } else if (fill.includes('--vd-flowchart-edge')) {
-          shape.setAttribute('fill', '#475569');
+        const preset = fill.match(/--vd-flowchart-palette-([a-z]+)-edge/);
+        if (preset) {
+          const fallback = FLOWCHART_COLOR_PRESET_FALLBACKS[preset[1]]?.edge;
+          if (fallback) shape.setAttribute('fill', fallback);
+          return;
         }
+        if (fill.includes('var(')) shape.setAttribute('fill', '#475569');
       });
       exportRoot.appendChild(defsClone);
     }
@@ -6877,19 +6898,18 @@ export class VdFlowchart {
       const edge = this.findEdge(edgeId);
       const pathEl = edgeGroup.querySelector('.vd-flowchart-edge-path');
       if (edge && pathEl) {
-        if (edge.color) {
-          const presetColors = FLOWCHART_COLOR_PRESET_FALLBACKS[edge.color];
-          pathEl.setAttribute('stroke', presetColors ? presetColors.edge : edge.color);
-        } else {
-          pathEl.setAttribute('stroke', '#475569');
-        }
+        const stroke = edge.color
+          ? FLOWCHART_COLOR_PRESET_FALLBACKS[edge.color]?.edge || edge.color
+          : '#475569';
+        pathEl.setAttribute('stroke', stroke);
+        pathEl.style.stroke = stroke;
       }
     });
 
     const nodesClone = this.nodesLayer.cloneNode(true);
     nodesClone
       .querySelectorAll(
-        '.vd-flowchart-ports, .vd-flowchart-resize-handles, .vd-flowchart-node-lock, .vd-flowchart-collapse-badge',
+        '.vd-flowchart-ports, .vd-flowchart-resize-handles, .vd-flowchart-node-lock, .vd-flowchart-collapse-badge, .vd-flowchart-selection-box',
       )
       .forEach((el) => el.remove());
     nodesClone.querySelectorAll('.vd-flowchart-node').forEach((nodeGroup) => {
@@ -6907,10 +6927,13 @@ export class VdFlowchart {
           node.stroke || presetColors?.stroke || (node.type === 'junction' ? '#ffffff' : '#475569');
         shapeEl.setAttribute('fill', fill);
         shapeEl.setAttribute('stroke', stroke);
+        shapeEl.style.fill = fill;
+        shapeEl.style.stroke = stroke;
       }
       if (labelEl) {
         const textColor = node.textColor || presetColors?.text || '#0f172a';
         labelEl.setAttribute('fill', textColor);
+        labelEl.style.fill = textColor;
       }
     });
 

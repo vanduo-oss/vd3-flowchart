@@ -97,7 +97,7 @@ export interface VdFlowchartExposed {
   toggleNodeLocked(nodeId?: string | string[]): boolean;
   duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
   copySelection(): boolean;
-  pasteClipboard(): FlowchartNode | FlowchartNode[] | null;
+  pasteClipboard(): boolean;
   pasteSelection(): FlowchartNode | FlowchartNode[] | null;
   cutSelection(): boolean;
   exportSvg(options?: ExportSvgOptions): string;

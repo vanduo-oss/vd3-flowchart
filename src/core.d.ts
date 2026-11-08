@@ -344,7 +344,7 @@ export class VdFlowchart {
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
   duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
   copySelection(): boolean;
-  pasteClipboard(): FlowchartNode | FlowchartNode[] | null;
+  pasteClipboard(): boolean;
   pasteSelection(): FlowchartNode | FlowchartNode[] | null;
   cutSelection(): boolean;
   /** Collapse or expand a node's branch; undoable, reason `node:collapse`. */

@@ -87,9 +87,8 @@ describe('v1.6.0 — arrowhead endpoint retraction', () => {
 describe('v1.6.0 — node & edge coloring', () => {
   it('exports color presets and applies theme-adaptive presets to nodes and edges', () => {
     expect(FLOWCHART_COLOR_PRESETS).toContain('primary');
-    expect(FLOWCHART_COLOR_PRESETS).toContain(
-      'emerald' in FLOWCHART_COLOR_PRESETS ? 'emerald' : 'teal',
-    );
+    expect(FLOWCHART_COLOR_PRESETS).toContain('teal');
+    expect(FLOWCHART_COLOR_PRESETS).not.toContain('emerald');
 
     const editor = createEditor({
       data: {
