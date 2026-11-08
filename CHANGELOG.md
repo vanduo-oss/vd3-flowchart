@@ -2,6 +2,59 @@
 
 All notable changes to `@vanduo-oss/vd3-flowchart` are documented here.
 
+## 1.6.0 — 2026-11-08
+
+### Added
+
+- **Theme-adaptive coloring for nodes and edges** (`FLOWCHART_COLOR_PRESETS`):
+  12 presets (`default`, `primary`, `secondary`, `success`, `warning`,
+  `danger`, `info`, `violet`, `teal`, `orange`, `pink`, `neutral`) driven by
+  `--vd-flowchart-palette-*` light/dark CSS variables, plus optional custom CSS
+  color overrides (`fill`, `stroke`, `textColor` on nodes; `color` on edges).
+  Edge arrowheads and dot markers inherit the edge color automatically.
+- **Coloring UI & API**: Inspector color swatch grid, custom color inputs, and
+  reset action; toolbar quick-color palette popover; and programmatic methods
+  `setNodeColor()`, `setEdgeColor()`, `setSelectionColor()`, and
+  `clearSelectionColor()`.
+- **Layer order ("Arrange")**: `bringToFront()`, `bringForward()`,
+  `sendBackward()`, and `sendToBack()` for nodes, multi-selections, and edges,
+  with Inspector controls and keyboard shortcuts (`Cmd/Ctrl + ]`,
+  `Cmd/Ctrl + [`, `Cmd/Ctrl + Shift + ]`, `Cmd/Ctrl + Shift + [`).
+- **Multi-selection Align & Distribute**: `alignNodes()`
+  (`FLOWCHART_NODE_ALIGNMENTS`: `left`, `center`, `right`, `top`, `middle`,
+  `bottom`) and `distributeNodes()` (`FLOWCHART_DISTRIBUTE_AXES`: `horizontal`,
+  `vertical`), plus batch color, layer order, and lock controls in the
+  multi-selection Inspector.
+- **Edge stroke styles** (`FLOWCHART_EDGE_STROKE_STYLES`): `solid`, `dashed`,
+  `dotted`, and `animated` (with `prefers-reduced-motion: reduce` support) via
+  `edge.strokeStyle` and the Inspector `Style` selector.
+- **Node locking**: `node.locked`, `setNodeLocked()`, `toggleNodeLocked()`,
+  `Cmd/Ctrl + L` shortcut, and SVG lock badge. Locked nodes cannot be dragged,
+  resized, nudged, inline-edited, or deleted via `deleteSelection()`.
+- **Standalone SVG export**: `exportSvg({ padding, background })` serializes
+  the visible diagram into a cropped, self-contained `<svg>` string with
+  inlined colors and stripped interactive handles.
+- **Vue template ref methods**: exposed all new coloring, layer order,
+  align/distribute, locking, clipboard (`duplicateSelection`, `copySelection`,
+  `pasteClipboard`, `pasteSelection`, `cutSelection`), and `exportSvg` methods
+  on `VdFlowchart`.
+
+### Fixed
+
+- **Arrowhead endpoint retraction**: curved, straight, and orthogonal edge paths
+  now retract their endpoint before start/end markers by the marker's overhang
+  plus the target shape's outer stroke offset (including diamond miter vertices),
+  so arrow tips meet the shape border cleanly instead of poking underneath the
+  node fill.
+
+### Compatibility
+
+- `FLOWCHART_DOCUMENT_VERSION` stays `1.3.0`. Uncolored, unlocked, solid-stroke
+  nodes and edges omit all new optional fields so default documents serialize
+  identically to `1.5.1`. `load()` also accepts `data.color`, `data.fill`,
+  `data.stroke`, `data.textColor`, `data.locked`, and `data.strokeStyle`
+  fallbacks.
+
 ## 1.5.1 — 2026-11-01
 
 ### Fixed

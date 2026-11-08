@@ -25,7 +25,7 @@ No methods are removed. Existing callers that omit the new options keep 1.4 beha
 ### Modified Capabilities
 
 - `flowchart`: Opt-in camera and node bounds, four-decimal scale, proportional micro-node rendering, adaptive grid, and `fitNode`, with document format `1.3.0` unchanged.
-- `repo-scaffold`: Package version `1.5.0`, a non-publishing `release:check`, Node 20.19 plus Node 24 CI, and a packed-tarball consumer smoke.
+- `repo-scaffold`: Package version `1.5.0`, a non-publishing `release:check`, Node 20.19 plus Node 26 CI, and a packed-tarball consumer smoke.
 
 ## Impact
 

@@ -30,6 +30,15 @@ const TOOLBAR_ICON_PATHS = {
   redo: 'M240,56v48a8,8,0,0,1-8,8H184a8,8,0,0,1,0-16H211.4L184.81,71.64l-.25-.24a80,80,0,1,0-1.67,114.78,8,8,0,0,1,11,11.63A95.44,95.44,0,0,1,128,224h-1.32A96,96,0,1,1,195.75,60L224,85.8V56a8,8,0,1,1,16,0Z',
   minimap:
     'M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z',
+  palette:
+    'M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89Zm13,93.71A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.6ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z',
+  'bring-to-front':
+    'M216,104H168V56a16,16,0,0,0-16-16H56A16,16,0,0,0,40,56v96a16,16,0,0,0,16,16h48v48a16,16,0,0,0,16,16h96a16,16,0,0,0,16-16V120A16,16,0,0,0,216,104ZM56,152V56h96v48H120a16,16,0,0,0-16,16v32Zm160,64H120V120h96Z',
+  'send-to-back':
+    'M216,104H168V56a16,16,0,0,0-16-16H56A16,16,0,0,0,40,56v96a16,16,0,0,0,16,16h48v48a16,16,0,0,0,16,16h96a16,16,0,0,0,16-16V120A16,16,0,0,0,216,104ZM56,56h96v96H56Zm160,160H120V168h32a16,16,0,0,0,16-16V120h48Z',
+  lock: 'M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z',
+  unlock:
+    'M208,80H96V56a32,32,0,0,1,32-32c15.37,0,29.2,11,32.16,25.59a8,8,0,0,0,15.68-3.18C171.32,24.15,151.32,8,128,8A48.05,48.05,0,0,0,80,56V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80Zm0,128H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z',
   clear:
     'M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z',
 };
@@ -124,7 +133,7 @@ const EDGE_STROKE_PRESETS = [
   { id: 'bold', label: 'Bold', width: 3.5 },
 ];
 
-export const VD_FLOWCHART_VERSION = '1.5.1';
+export const VD_FLOWCHART_VERSION = '1.6.0';
 /** Serialized schema version; change only when the document format changes. */
 export const FLOWCHART_DOCUMENT_VERSION = '1.3.0';
 export const FLOWCHART_NODE_TYPES = [
@@ -139,10 +148,97 @@ export const FLOWCHART_NODE_TYPES = [
 export const FLOWCHART_PORTS = ['top', 'right', 'bottom', 'left'];
 export const FLOWCHART_EDGE_MARKERS = ['none', 'arrow', 'dot'];
 export const FLOWCHART_EDGE_ROUTES = ['curve', 'straight', 'orthogonal'];
+export const FLOWCHART_EDGE_STROKE_STYLES = ['solid', 'dashed', 'dotted', 'animated'];
+export const FLOWCHART_COLOR_PRESETS = [
+  'default',
+  'primary',
+  'secondary',
+  'success',
+  'warning',
+  'danger',
+  'info',
+  'violet',
+  'teal',
+  'orange',
+  'pink',
+  'neutral',
+];
+export const FLOWCHART_NODE_ALIGNMENTS = ['left', 'center', 'right', 'top', 'middle', 'bottom'];
+export const FLOWCHART_DISTRIBUTE_AXES = ['horizontal', 'vertical'];
 export const FLOWCHART_KEYBOARD_SHORTCUTS = ['mindmap', 'basic'];
+
+const FLOWCHART_COLOR_PRESET_LABELS = {
+  default: 'Default',
+  primary: 'Primary',
+  secondary: 'Secondary',
+  success: 'Success',
+  warning: 'Warning',
+  danger: 'Danger',
+  info: 'Info',
+  violet: 'Violet',
+  teal: 'Teal',
+  orange: 'Orange',
+  pink: 'Pink',
+  neutral: 'Neutral',
+};
+
+const FLOWCHART_COLOR_PRESET_SET = new Set(FLOWCHART_COLOR_PRESETS);
+
+const FLOWCHART_COLOR_PRESET_FALLBACKS = {
+  primary: { fill: '#dbeafe', stroke: '#2563eb', text: '#1e3a8a', edge: '#2563eb' },
+  secondary: { fill: '#e0e7ff', stroke: '#4f46e5', text: '#312e81', edge: '#4f46e5' },
+  success: { fill: '#dcfce7', stroke: '#16a34a', text: '#14532d', edge: '#16a34a' },
+  warning: { fill: '#fef3c7', stroke: '#d97706', text: '#78350f', edge: '#d97706' },
+  danger: { fill: '#fee2e2', stroke: '#dc2626', text: '#7f1d1d', edge: '#dc2626' },
+  info: { fill: '#e0f2fe', stroke: '#0284c7', text: '#0c4a6e', edge: '#0284c7' },
+  violet: { fill: '#f3e8ff', stroke: '#9333ea', text: '#581c87', edge: '#9333ea' },
+  teal: { fill: '#ccfbf1', stroke: '#0d9488', text: '#134e4a', edge: '#0d9488' },
+  orange: { fill: '#ffedd5', stroke: '#ea580c', text: '#7c2d12', edge: '#ea580c' },
+  pink: { fill: '#fce7f3', stroke: '#db2777', text: '#831843', edge: '#db2777' },
+  neutral: { fill: '#f1f5f9', stroke: '#64748b', text: '#1e293b', edge: '#64748b' },
+};
+
+const FLOWCHART_EDGE_STROKE_STYLE_LABELS = {
+  solid: 'Solid',
+  dashed: 'Dashed',
+  dotted: 'Dotted',
+  animated: 'Animated flow',
+};
 
 function normalizeKeyboardShortcuts(value) {
   return value === 'basic' ? 'basic' : 'mindmap';
+}
+
+function normalizeColorPreset(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim().toLowerCase();
+  return FLOWCHART_COLOR_PRESETS.includes(trimmed) && trimmed !== 'default' ? trimmed : '';
+}
+
+function sanitizeCssColor(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'default') return '';
+  if (/[;{}<>\\"]/i.test(trimmed) || /url\s*\(/i.test(trimmed)) return '';
+  return trimmed.slice(0, 64);
+}
+
+function normalizeEdgeColor(value) {
+  const preset = normalizeColorPreset(value);
+  if (preset) return preset;
+  return sanitizeCssColor(value);
+}
+
+function normalizeEdgeStrokeStyle(value) {
+  return FLOWCHART_EDGE_STROKE_STYLES.includes(value) && value !== 'solid' ? value : 'solid';
+}
+
+function resolveEdgeColorValue(color) {
+  if (!color || color === 'default') return 'var(--vd-flowchart-accent)';
+  if (FLOWCHART_COLOR_PRESETS.includes(color)) {
+    return `var(--vd-flowchart-palette-${color}-edge)`;
+  }
+  return color;
 }
 
 const ARROW_DIRECTIONS = {
@@ -189,6 +285,8 @@ function getShortcutRows(mode, readonly) {
       'Edit the connection label',
     ],
     ['Cmd/Ctrl + /', 'Collapse or expand the branch'],
+    ['Cmd/Ctrl + ] or [', 'Bring forward or send backward (Shift: front/back)'],
+    ['Cmd/Ctrl + L', 'Lock or unlock the selected node'],
     ['Alt + Arrow', 'Nudge the node (add Shift for 1 px)'],
     ['Delete or Backspace', 'Delete the selection'],
     ['Cmd/Ctrl + D', 'Duplicate the node'],
@@ -407,12 +505,14 @@ function clampNodeHeight(type, height, fallback, sizeBounds) {
 }
 
 function isNodeResizable(nodeOrType) {
+  if (isPlainObject(nodeOrType) && nodeOrType.locked) return false;
   const spec =
     typeof nodeOrType === 'string' ? getNodeSpec(nodeOrType) : getNodeSpec(nodeOrType?.type);
   return spec.resizable !== false;
 }
 
 function isNodeTextEditable(nodeOrType) {
+  if (isPlainObject(nodeOrType) && nodeOrType.locked) return false;
   const spec =
     typeof nodeOrType === 'string' ? getNodeSpec(nodeOrType) : getNodeSpec(nodeOrType?.type);
   return spec.textEditable !== false;
@@ -458,8 +558,17 @@ function normalizeNode(rawNode, index, usedIds, sizeBounds) {
     text: rawNode?.text == null ? spec.text : String(rawNode.text),
     data: isPlainObject(rawNode?.data) ? deepClone(rawNode.data) : {},
   };
-  // Written only when true so expanded nodes serialize as in format 1.2.0.
+  // Written only when true / non-default so unstyled nodes serialize identically to format 1.2.0 / 1.3.0.
   if (rawNode?.collapsed === true) node.collapsed = true;
+  const color = normalizeColorPreset(rawNode?.color ?? rawNode?.data?.color);
+  if (color) node.color = color;
+  const fill = sanitizeCssColor(rawNode?.fill ?? rawNode?.data?.fill);
+  if (fill) node.fill = fill;
+  const stroke = sanitizeCssColor(rawNode?.stroke ?? rawNode?.data?.stroke);
+  if (stroke) node.stroke = stroke;
+  const textColor = sanitizeCssColor(rawNode?.textColor ?? rawNode?.data?.textColor);
+  if (textColor) node.textColor = textColor;
+  if (rawNode?.locked === true || rawNode?.data?.locked === true) node.locked = true;
   return node;
 }
 
@@ -502,6 +611,12 @@ function computeHiddenNodeIds(nodes, edges) {
 }
 
 function normalizeEndpoint(rawEndpoint, fallbackPort) {
+  if (typeof rawEndpoint === 'string') {
+    return {
+      nodeId: sanitizeId(rawEndpoint),
+      port: fallbackPort,
+    };
+  }
   return {
     nodeId: sanitizeId(rawEndpoint?.nodeId),
     port: FLOWCHART_PORTS.includes(rawEndpoint?.port) ? rawEndpoint.port : fallbackPort,
@@ -545,6 +660,10 @@ function normalizeEdge(rawEdge, index, nodeIds, usedIds) {
     label: rawEdge?.label == null ? '' : String(rawEdge.label),
     data: isPlainObject(rawEdge?.data) ? deepClone(rawEdge.data) : {},
   };
+  const color = normalizeEdgeColor(rawEdge?.color ?? rawEdge?.data?.color);
+  if (color) edge.color = color;
+  const strokeStyle = normalizeEdgeStrokeStyle(rawEdge?.strokeStyle ?? rawEdge?.data?.strokeStyle);
+  if (strokeStyle !== 'solid') edge.strokeStyle = strokeStyle;
   syncEdgeKind(edge);
   return edge;
 }
@@ -1156,21 +1275,99 @@ function buildOrthogonalPath(
   };
 }
 
+function getPortOuterOffset(node, port) {
+  if (!node || node.type === 'label') return 0;
+  const visual = nodeVisualScale(node);
+  const baseStroke = node.type === 'junction' ? 1.25 : 1.5;
+  const halfStroke = Math.max(0.015, (baseStroke * visual) / 2);
+  if (node.type === 'diamond') {
+    const w = Math.max(1, toFiniteNumber(node.width, 184));
+    const h = Math.max(1, toFiniteNumber(node.height, 120));
+    const diag = Math.hypot(w, h);
+    const miterFactor = isHorizontalPort(port) ? Math.min(4, diag / h) : Math.min(4, diag / w);
+    return halfStroke * miterFactor;
+  }
+  return halfStroke;
+}
+
+function getMarkerEndpointRetraction(markerType, strokeWidth, edgeScale = 1) {
+  if (!markerType || markerType === 'none') return 0;
+  const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
+  const effective = Math.max(0.02, normalizeEdgeStrokeWidth(strokeWidth) * scale);
+  if (markerType === 'dot') {
+    return formatNumber(Math.max(2.75 * scale, effective * 1.45));
+  }
+  return formatNumber(Math.max(1.5 * scale, effective * 0.85));
+}
+
 function buildEdgePath(edge, fromNode = null, toNode = null) {
   const fromPort = edge?.from?.port || edge?.fromPort || 'right';
   const toPort = edge?.to?.port || edge?.toPort || 'left';
-  const fromPoint = edge?.fromPoint || (fromNode ? getPortPosition(fromNode, fromPort) : null);
-  const toPoint = edge?.toPoint || (toNode ? getPortPosition(toNode, toPort) : null);
+  const rawFromPoint = edge?.fromPoint || (fromNode ? getPortPosition(fromNode, fromPort) : null);
+  const rawToPoint = edge?.toPoint || (toNode ? getPortPosition(toNode, toPort) : null);
   const route = normalizeEdgeRoute(edge?.route);
-  const metrics = routeMetrics(edgeVisualScale(fromNode, toNode));
+  const visualScale = edgeVisualScale(fromNode, toNode);
+  const metrics = routeMetrics(visualScale);
 
-  if (!fromPoint || !toPoint) {
+  if (!rawFromPoint || !rawToPoint) {
     return { d: '', labelX: 0, labelY: 0 };
   }
 
+  const strokeWidth = normalizeEdgeStrokeWidth(edge?.strokeWidth);
+  const startMarker = edge?.startMarker || 'none';
+  const endMarker = edge?.endMarker || 'none';
+  const rawDistance = Math.hypot(rawToPoint.x - rawFromPoint.x, rawToPoint.y - rawFromPoint.y);
+  const maxRetract = rawDistance > 0 ? rawDistance * 0.45 : 0;
+
+  const fromMarkerRetract =
+    !edge?.fromPoint && fromNode && startMarker !== 'none'
+      ? getMarkerEndpointRetraction(startMarker, strokeWidth, visualScale)
+      : 0;
+  const fromBorderRetract = fromMarkerRetract > 0 ? getPortOuterOffset(fromNode, fromPort) : 0;
+  const toMarkerRetract =
+    !edge?.toPoint && toNode && endMarker !== 'none'
+      ? getMarkerEndpointRetraction(endMarker, strokeWidth, visualScale)
+      : 0;
+  const toBorderRetract = toMarkerRetract > 0 ? getPortOuterOffset(toNode, toPort) : 0;
+
+  const fromRetract = Math.min(maxRetract, fromMarkerRetract + fromBorderRetract);
+  const toRetract = Math.min(maxRetract, toMarkerRetract + toBorderRetract);
+
   if (route === 'straight') {
-    return buildStraightPath(fromPoint, toPoint);
+    const borderFrom =
+      fromBorderRetract > 0
+        ? offsetPoint(
+            rawFromPoint,
+            getPortNormal(fromPort),
+            Math.min(maxRetract, fromBorderRetract),
+          )
+        : rawFromPoint;
+    const borderTo =
+      toBorderRetract > 0
+        ? offsetPoint(rawToPoint, getPortNormal(toPort), Math.min(maxRetract, toBorderRetract))
+        : rawToPoint;
+    const dx = borderTo.x - borderFrom.x;
+    const dy = borderTo.y - borderFrom.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.01) {
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const sRetract = Math.min(dist * 0.45, fromMarkerRetract);
+      const eRetract = Math.min(dist * 0.45, toMarkerRetract);
+      return buildStraightPath(
+        { x: borderFrom.x + ux * sRetract, y: borderFrom.y + uy * sRetract },
+        { x: borderTo.x - ux * eRetract, y: borderTo.y - uy * eRetract },
+      );
+    }
+    return buildStraightPath(rawFromPoint, rawToPoint);
   }
+
+  const fromPoint =
+    fromRetract > 0
+      ? offsetPoint(rawFromPoint, getPortNormal(fromPort), fromRetract)
+      : rawFromPoint;
+  const toPoint =
+    toRetract > 0 ? offsetPoint(rawToPoint, getPortNormal(toPort), toRetract) : rawToPoint;
 
   if (route === 'orthogonal') {
     const fromRect =
@@ -1182,7 +1379,13 @@ function buildEdgePath(edge, fromNode = null, toNode = null) {
   return buildCurvePath(fromPoint, toPoint, fromPort, toPort, metrics);
 }
 
-function createArrowMarker(id, strokeWidth, reversed = false, edgeScale = 1) {
+function createArrowMarker(
+  id,
+  strokeWidth,
+  reversed = false,
+  edgeScale = 1,
+  fill = 'var(--vd-flowchart-accent)',
+) {
   const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
   const effective = Math.max(0.02, strokeWidth * scale);
   const size = formatNumber(Math.max(9 * scale, effective * 4.4));
@@ -1201,13 +1404,13 @@ function createArrowMarker(id, strokeWidth, reversed = false, edgeScale = 1) {
       d: reversed
         ? `M ${formatNumber(size)} 0 L 0 ${formatNumber(size / 2)} L ${formatNumber(size)} ${formatNumber(size)} z`
         : `M 0 0 L ${formatNumber(size)} ${formatNumber(size / 2)} L 0 ${formatNumber(size)} z`,
-      fill: 'var(--vd-flowchart-accent)',
+      fill,
     }),
   );
   return marker;
 }
 
-function createDotMarker(id, strokeWidth, edgeScale = 1) {
+function createDotMarker(id, strokeWidth, edgeScale = 1, fill = 'var(--vd-flowchart-accent)') {
   const scale = clamp(toFiniteNumber(edgeScale, 1), 0.01, 1);
   const effective = Math.max(0.02, strokeWidth * scale);
   const size = formatNumber(Math.max(8 * scale, effective * 3.3));
@@ -1226,7 +1429,7 @@ function createDotMarker(id, strokeWidth, edgeScale = 1) {
       cx: formatNumber(size / 2),
       cy: formatNumber(size / 2),
       r: radius,
-      fill: 'var(--vd-flowchart-accent)',
+      fill,
     }),
   );
   return marker;
@@ -1543,6 +1746,7 @@ export class VdFlowchart {
     this.minimapFrame = 0;
     this.minimapDrag = null;
     this.shortcutsHelpOpen = false;
+    this.colorPopoverOpen = false;
     this.autoFit = Boolean(options.autoFit);
     this.readyEmitted = false;
     this.resizeObserver = null;
@@ -1560,6 +1764,7 @@ export class VdFlowchart {
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSelectionFieldInput = this.handleSelectionFieldInput.bind(this);
     this.handleSelectionFieldChange = this.handleSelectionFieldChange.bind(this);
+    this.handleSelectionActionClick = this.handleSelectionActionClick.bind(this);
     this.handleJsonActionClick = this.handleJsonActionClick.bind(this);
     this.handleResize = this.handleResize.bind(this);
 
@@ -1664,6 +1869,33 @@ export class VdFlowchart {
     });
     this.arrangeSelect.value = this.layoutMode;
 
+    this.colorPopoverWrap = createElement('div', { className: 'vd-flowchart-color-popover-wrap' });
+    this.colorButton = createToolbarButton({
+      action: 'color-popover',
+      label: 'Color selection',
+      icon: 'palette',
+      disabled: this.readonly,
+    });
+    this.colorButton.setAttribute('aria-expanded', 'false');
+    this.colorPopover = createElement('div', { className: 'vd-flowchart-color-popover' });
+    this.colorPopover.hidden = true;
+    this.colorPopover.setAttribute('role', 'dialog');
+    this.colorPopover.setAttribute('aria-label', 'Color presets');
+    const popoverSwatches = createElement('div', { className: 'vd-flowchart-swatch-grid' });
+    FLOWCHART_COLOR_PRESETS.forEach((preset) => {
+      const swatch = createElement('button', {
+        className: `vd-flowchart-swatch vd-flowchart-swatch--${preset}`,
+        title: FLOWCHART_COLOR_PRESET_LABELS[preset] || preset,
+      });
+      swatch.setAttribute('type', 'button');
+      swatch.setAttribute('data-flowchart-color', preset);
+      swatch.setAttribute('aria-label', `Color ${FLOWCHART_COLOR_PRESET_LABELS[preset] || preset}`);
+      popoverSwatches.appendChild(swatch);
+    });
+    this.colorPopover.appendChild(popoverSwatches);
+    this.colorPopoverWrap.appendChild(this.colorButton);
+    this.colorPopoverWrap.appendChild(this.colorPopover);
+
     this.clearButton = createToolbarButton({
       action: 'clear',
       label: 'Clear canvas',
@@ -1694,6 +1926,7 @@ export class VdFlowchart {
     this.minimapButton.setAttribute('aria-pressed', this.minimapEnabled ? 'true' : 'false');
 
     toolbarLeft.appendChild(this.arrangeSelect);
+    toolbarLeft.appendChild(this.colorPopoverWrap);
     toolbarLeft.appendChild(this.clearButton);
     toolbarRight.appendChild(this.minimapButton);
     toolbarRight.appendChild(this.shortcutsButton);
@@ -2011,6 +2244,7 @@ export class VdFlowchart {
     this.deleteButton.addEventListener('click', () => this.deleteSelection());
     this.selectionFields.addEventListener('input', this.handleSelectionFieldInput);
     this.selectionFields.addEventListener('change', this.handleSelectionFieldChange);
+    this.selectionFields.addEventListener('click', this.handleSelectionActionClick);
     this.jsonActions.addEventListener('click', this.handleJsonActionClick);
     this.canvasEl.addEventListener('pointerdown', this.handlePointerDown);
     this.canvasEl.addEventListener('pointermove', this.handlePointerMove);
@@ -2031,6 +2265,7 @@ export class VdFlowchart {
     this.paletteGrid.removeEventListener('click', this.handlePaletteClick);
     this.selectionFields.removeEventListener('input', this.handleSelectionFieldInput);
     this.selectionFields.removeEventListener('change', this.handleSelectionFieldChange);
+    this.selectionFields.removeEventListener('click', this.handleSelectionActionClick);
     this.jsonActions.removeEventListener('click', this.handleJsonActionClick);
     this.canvasEl.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvasEl.removeEventListener('pointermove', this.handlePointerMove);
@@ -2091,7 +2326,26 @@ export class VdFlowchart {
     this.render({ scene: true, inspector: false, json: false });
   }
 
+  toggleColorPopover(force) {
+    if (!this.colorPopover || !this.colorButton) return this;
+    const open = typeof force === 'boolean' ? force : !this.colorPopoverOpen;
+    this.colorPopoverOpen = open && !this.readonly;
+    this.colorPopover.hidden = !this.colorPopoverOpen;
+    this.colorButton.setAttribute('aria-expanded', this.colorPopoverOpen ? 'true' : 'false');
+    return this;
+  }
+
   handleToolbarClick(event) {
+    const colorSwatch = event.target.closest('[data-flowchart-color]');
+    if (colorSwatch) {
+      if (!this.readonly) {
+        const preset = colorSwatch.getAttribute('data-flowchart-color');
+        this.setSelectionColor(preset);
+      }
+      this.toggleColorPopover(false);
+      return;
+    }
+
     const actionButton = event.target.closest('[data-flowchart-action]');
     if (!actionButton) return;
 
@@ -2102,6 +2356,7 @@ export class VdFlowchart {
     if (action === 'fit-view') this.fitView();
     if (action === 'undo') this.undo();
     if (action === 'redo') this.redo();
+    if (action === 'color-popover') this.toggleColorPopover();
     if (action === 'clear' && !this.readonly) this.clear();
     if (action === 'shortcuts') this.toggleShortcutsHelp();
     if (action === 'minimap') this.setMinimapEnabled(!this.minimapEnabled);
@@ -2175,16 +2430,18 @@ export class VdFlowchart {
     nodes.forEach((node) => {
       const point = map(node.x, node.y);
       const selected = this.isNodeSelected(node.id);
-      this.minimapSvg.appendChild(
-        svgEl('rect', {
-          class: `vd-flowchart-minimap-node${selected ? ' is-selected' : ''}`,
-          x: point.x,
-          y: point.y,
-          width: formatNumber(Math.max(1.5, node.width * transform.scale)),
-          height: formatNumber(Math.max(1.5, node.height * transform.scale)),
-          rx: 1.5,
-        }),
-      );
+      const rectEl = svgEl('rect', {
+        class: `vd-flowchart-minimap-node${selected ? ' is-selected' : ''}`,
+        x: point.x,
+        y: point.y,
+        width: formatNumber(Math.max(1.5, node.width * transform.scale)),
+        height: formatNumber(Math.max(1.5, node.height * transform.scale)),
+        rx: 1.5,
+      });
+      if (node.color) rectEl.setAttribute('data-color', node.color);
+      if (node.fill) rectEl.style.fill = node.fill;
+      if (node.stroke) rectEl.style.stroke = node.stroke;
+      this.minimapSvg.appendChild(rectEl);
     });
     const corner = map(view.left, view.top);
     this.minimapSvg.appendChild(
@@ -2319,6 +2576,43 @@ export class VdFlowchart {
     }
   }
 
+  handleSelectionActionClick(event) {
+    if (this.readonly) return;
+    const swatch = event.target.closest('[data-color-preset]');
+    if (swatch) {
+      this.setSelectionColor(swatch.getAttribute('data-color-preset'));
+      return;
+    }
+    const resetBtn = event.target.closest('[data-color-reset]');
+    if (resetBtn) {
+      this.clearSelectionColor();
+      return;
+    }
+    const arrangeBtn = event.target.closest('[data-arrange-action]');
+    if (arrangeBtn) {
+      const action = arrangeBtn.getAttribute('data-arrange-action');
+      if (action === 'bring-to-front') this.bringToFront();
+      else if (action === 'bring-forward') this.bringForward();
+      else if (action === 'send-backward') this.sendBackward();
+      else if (action === 'send-to-back') this.sendToBack();
+      return;
+    }
+    const alignBtn = event.target.closest('[data-align-action]');
+    if (alignBtn) {
+      this.alignNodes(alignBtn.getAttribute('data-align-action'));
+      return;
+    }
+    const distributeBtn = event.target.closest('[data-distribute-action]');
+    if (distributeBtn) {
+      this.distributeNodes(distributeBtn.getAttribute('data-distribute-action'));
+      return;
+    }
+    const lockBtn = event.target.closest('[data-lock-toggle]');
+    if (lockBtn) {
+      this.toggleNodeLocked();
+    }
+  }
+
   handleSelectionFieldInput(event) {
     const field = event.target.getAttribute('data-field');
     if (!field) return;
@@ -2347,6 +2641,42 @@ export class VdFlowchart {
           ? { width: toFiniteNumber(event.target.value, undefined) }
           : { height: toFiniteNumber(event.target.value, undefined) };
       this.updateNode(this.selection?.id, patch, { inspector: false, reason: 'node:update' });
+      return;
+    }
+
+    if (field === 'node-fill') {
+      this.updateNode(
+        this.selection?.id,
+        { fill: event.target.value },
+        { inspector: false, reason: 'node:update' },
+      );
+      return;
+    }
+
+    if (field === 'node-stroke') {
+      this.updateNode(
+        this.selection?.id,
+        { stroke: event.target.value },
+        { inspector: false, reason: 'node:update' },
+      );
+      return;
+    }
+
+    if (field === 'node-text-color') {
+      this.updateNode(
+        this.selection?.id,
+        { textColor: event.target.value },
+        { inspector: false, reason: 'node:update' },
+      );
+      return;
+    }
+
+    if (field === 'edge-color') {
+      this.updateEdge(
+        this.selection?.id,
+        { color: event.target.value },
+        { inspector: false, reason: 'edge:update' },
+      );
     }
   }
 
@@ -2396,6 +2726,15 @@ export class VdFlowchart {
         { strokeWidth: getStrokePresetWidth(event.target.value) },
         { inspector: true, reason: 'edge:update' },
       );
+      return;
+    }
+
+    if (field === 'edge-stroke-style') {
+      this.updateEdge(
+        this.selection?.id,
+        { strokeStyle: event.target.value },
+        { inspector: true, reason: 'edge:update' },
+      );
     }
   }
 
@@ -2428,6 +2767,11 @@ export class VdFlowchart {
       this.toggleShortcutsHelp(false);
       return;
     }
+    if (key === 'Escape' && this.colorPopoverOpen) {
+      event.preventDefault();
+      this.toggleColorPopover(false);
+      return;
+    }
 
     if (target === this.canvasEl && this.handleCanvasKeyDown(event)) {
       event.preventDefault();
@@ -2451,6 +2795,29 @@ export class VdFlowchart {
       if (this.selection?.kind === 'node') {
         event.preventDefault();
         this.duplicateSelection();
+      }
+      return;
+    }
+    if (modKey && (key === 'l' || key === 'L')) {
+      if (this.selection?.kind === 'node') {
+        event.preventDefault();
+        this.toggleNodeLocked();
+      }
+      return;
+    }
+    if (modKey && (key === ']' || key === '}' || event.code === 'BracketRight')) {
+      if (this.selection) {
+        event.preventDefault();
+        if (event.shiftKey || key === '}') this.bringToFront();
+        else this.bringForward();
+      }
+      return;
+    }
+    if (modKey && (key === '[' || key === '{' || event.code === 'BracketLeft')) {
+      if (this.selection) {
+        event.preventDefault();
+        if (event.shiftKey || key === '{') this.sendToBack();
+        else this.sendBackward();
       }
       return;
     }
@@ -2666,7 +3033,7 @@ export class VdFlowchart {
   nudgeNodes(nodeIds, direction, distance) {
     const step = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] }[direction];
     if (this.readonly || !step) return [];
-    const nodes = nodeIds.map((id) => this.findNode(id)).filter(Boolean);
+    const nodes = nodeIds.map((id) => this.findNode(id)).filter((node) => node && !node.locked);
     if (!nodes.length) return [];
     nodes.forEach((node) => {
       node.x = formatNumber(node.x + step[0] * distance);
@@ -2818,6 +3185,18 @@ export class VdFlowchart {
     return true;
   }
 
+  pasteSelection() {
+    if (!this.pasteClipboard()) return null;
+    if (this.hasMultiSelection()) {
+      return this.getSelectedNodeIds()
+        .map((id) => this.findNode(id))
+        .filter(Boolean)
+        .map((node) => deepClone(node));
+    }
+    const snap = this.getSelectionSnapshot();
+    return snap?.node || snap?.edge || null;
+  }
+
   cutSelection() {
     if (!this.copySelection()) return false;
     return this.deleteSelection();
@@ -2869,6 +3248,10 @@ export class VdFlowchart {
 
   handlePointerDown(event) {
     if (this.destroyed || (event.button != null && event.button !== 0)) return;
+
+    if (this.colorPopoverOpen) {
+      this.toggleColorPopover(false);
+    }
 
     if (this.textEditor && !event.target.closest('.vd-flowchart-text-editor')) {
       this.stopTextEdit({ commit: true });
@@ -2985,7 +3368,7 @@ export class VdFlowchart {
       const nodeId = resizeTarget.getAttribute('data-node-id');
       const handle = resizeTarget.getAttribute('data-resize-handle');
       const node = this.findNode(nodeId);
-      if (!node || !RESIZE_HANDLES.includes(handle)) return;
+      if (!node || !isNodeResizable(node) || !RESIZE_HANDLES.includes(handle)) return;
 
       this.select({ kind: 'node', id: nodeId });
       this.interaction = {
@@ -3026,8 +3409,11 @@ export class VdFlowchart {
       else this.select({ kind: 'node', id: nodeId });
 
       if (!this.readonly) {
-        this.interaction = this.createDragInteraction(event, nodeId, groupIds);
-        this.capturePointer(event.pointerId);
+        const drag = this.createDragInteraction(event, nodeId, groupIds);
+        if (drag) {
+          this.interaction = drag;
+          this.capturePointer(event.pointerId);
+        }
       }
 
       return;
@@ -3062,12 +3448,13 @@ export class VdFlowchart {
   }
 
   createDragInteraction(event, nodeId, nodeIds) {
-    const nodes = nodeIds.map((id) => this.findNode(id)).filter(Boolean);
+    const nodes = nodeIds.map((id) => this.findNode(id)).filter((node) => node && !node.locked);
+    if (!nodes.length) return null;
     const moving = new Set(nodes.map((node) => node.id));
     return {
       kind: 'drag-node',
       pointerId: event.pointerId,
-      nodeId,
+      nodeId: moving.has(nodeId) ? nodeId : nodes[0].id,
       nodeIds: nodes.map((node) => node.id),
       startWorld: this.clientToWorld(event.clientX, event.clientY),
       origins: new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }])),
@@ -3479,12 +3866,13 @@ export class VdFlowchart {
     );
   }
 
-  getMarkerId(markerType, position, strokeWidth, edgeScale = 1) {
+  getMarkerId(markerType, position, strokeWidth, edgeScale = 1, color = '') {
     const width = normalizeEdgeStrokeWidth(strokeWidth);
     // Two decimals, not four: a resize drag changes the scale every frame, and
     // a four-decimal key would leave an orphan marker for each pointer move.
     const scale = clamp(formatNumber(Math.max(edgeScale, 0.01)), 0.01, 1);
-    const key = `${markerType}:${position}:${width}:${scale}`;
+    const fill = resolveEdgeColorValue(color);
+    const key = `${markerType}:${position}:${width}:${scale}:${fill}`;
     if (this.markerIds.has(key)) {
       return this.markerIds.get(key);
     }
@@ -3492,8 +3880,8 @@ export class VdFlowchart {
     const markerId = nextId(`flowchart-${markerType}-${position}`);
     const marker =
       markerType === 'dot'
-        ? createDotMarker(markerId, width, scale)
-        : createArrowMarker(markerId, width, position === 'start', scale);
+        ? createDotMarker(markerId, width, scale, fill)
+        : createArrowMarker(markerId, width, position === 'start', scale, fill);
     this.markerDefs.appendChild(marker);
     this.markerIds.set(key, markerId);
     return markerId;
@@ -4013,16 +4401,17 @@ export class VdFlowchart {
 
   applyEdgeMarkers(pathElement, edge, edgeScale = 1) {
     const width = this.getEdgeStrokeWidth(edge);
+    const color = edge.color || '';
     if (edge.startMarker && edge.startMarker !== 'none') {
       pathElement.setAttribute(
         'marker-start',
-        `url(#${this.getMarkerId(edge.startMarker, 'start', width, edgeScale)})`,
+        `url(#${this.getMarkerId(edge.startMarker, 'start', width, edgeScale, color)})`,
       );
     }
     if (edge.endMarker && edge.endMarker !== 'none') {
       pathElement.setAttribute(
         'marker-end',
-        `url(#${this.getMarkerId(edge.endMarker, 'end', width, edgeScale)})`,
+        `url(#${this.getMarkerId(edge.endMarker, 'end', width, edgeScale, color)})`,
       );
     }
   }
@@ -4036,11 +4425,20 @@ export class VdFlowchart {
     const edgePath = buildEdgePath(edge, fromNode, toNode);
     const selected = this.selection?.kind === 'edge' && this.selection.id === edge.id;
     const inReconnectMode = this.reconnectEdgeId === edge.id;
+    const strokeStyle = normalizeEdgeStrokeStyle(edge.strokeStyle);
+    const strokeClass = strokeStyle !== 'solid' ? ` is-stroke-${strokeStyle}` : '';
 
     const group = svgEl('g', {
-      class: `vd-flowchart-edge${selected ? ' is-selected' : ''}${inReconnectMode ? ' is-reconnecting' : ''}`,
+      class: `vd-flowchart-edge${selected ? ' is-selected' : ''}${inReconnectMode ? ' is-reconnecting' : ''}${strokeClass}`,
       'data-edge-id': edge.id,
     });
+    if (edge.color) {
+      if (FLOWCHART_COLOR_PRESETS.includes(edge.color) && edge.color !== 'default') {
+        group.setAttribute('data-color', edge.color);
+      } else {
+        group.setAttribute('data-color', 'custom');
+      }
+    }
     const baseStroke = this.getEdgeStrokeWidth(edge);
     const strokeWidth =
       visual < 0.999 ? formatNumber(Math.max(0.02, baseStroke * visual)) : baseStroke;
@@ -4064,6 +4462,20 @@ export class VdFlowchart {
       'stroke-width': strokeWidth,
       'data-edge-id': edge.id,
     });
+    if (edge.color && !FLOWCHART_COLOR_PRESETS.includes(edge.color)) {
+      visiblePath.style.stroke = edge.color;
+    }
+    if (strokeStyle === 'dashed' || strokeStyle === 'animated') {
+      visiblePath.setAttribute(
+        'stroke-dasharray',
+        visual < 0.999 ? `${formatNumber(8 * visual)} ${formatNumber(5 * visual)}` : '8 5',
+      );
+    } else if (strokeStyle === 'dotted') {
+      visiblePath.setAttribute(
+        'stroke-dasharray',
+        visual < 0.999 ? `${formatNumber(2 * visual)} ${formatNumber(5 * visual)}` : '2 5',
+      );
+    }
     this.applyEdgeMarkers(visiblePath, edge, visual);
 
     const hitPath = svgEl('path', {
@@ -4154,6 +4566,37 @@ export class VdFlowchart {
     });
   }
 
+  renderLockBadge(node) {
+    const scale = this.documentData.viewport.scale || 1;
+    const badgeSize = 16 / scale;
+    const offsetX = node.width - badgeSize / 2 - 4 / scale;
+    const offsetY = badgeSize / 2 + 4 / scale;
+    const badge = svgEl('g', {
+      class: 'vd-flowchart-node-lock',
+      transform: `translate(${formatNumber(offsetX)} ${formatNumber(offsetY)})`,
+      'data-node-id': node.id,
+    });
+    const title = svgEl('title');
+    title.textContent = 'Locked node';
+    badge.appendChild(title);
+    badge.appendChild(
+      svgEl('circle', {
+        cx: 0,
+        cy: 0,
+        r: formatNumber(badgeSize / 2),
+      }),
+    );
+    const iconScale = (badgeSize * 0.62) / 256;
+    const iconOffset = -128 * iconScale;
+    badge.appendChild(
+      svgEl('path', {
+        d: TOOLBAR_ICON_PATHS.lock,
+        transform: `translate(${formatNumber(iconOffset)} ${formatNumber(iconOffset)}) scale(${formatScale(iconScale)})`,
+      }),
+    );
+    return badge;
+  }
+
   renderNode(node) {
     const selected = this.isNodeSelected(node.id);
     // Frames and handles describe one node; a group shows only the outline.
@@ -4164,10 +4607,13 @@ export class VdFlowchart {
       this.interaction?.kind === 'resize-node' && this.interaction.nodeId === node.id;
     const editing = this.textEditor?.nodeId === node.id;
     const group = svgEl('g', {
-      class: `vd-flowchart-node${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${resizing ? ' is-resizing' : ''}${editing ? ' is-editing' : ''}`,
+      class: `vd-flowchart-node${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${resizing ? ' is-resizing' : ''}${editing ? ' is-editing' : ''}${node.locked ? ' is-locked' : ''}`,
       transform: `translate(${formatNumber(node.x)} ${formatNumber(node.y)})`,
       'data-node-id': node.id,
     });
+    if (node.color) {
+      group.setAttribute('data-color', node.color);
+    }
     const portsVisible = this.shouldShowNodePorts(node);
 
     const visual = nodeVisualScale(node);
@@ -4189,8 +4635,15 @@ export class VdFlowchart {
     group.appendChild(hitbox);
     const shape = this.renderNodeShape(node);
     this.applyScaledNodeShape(node, shape);
+    if (node.fill) shape.style.fill = node.fill;
+    if (node.stroke) shape.style.stroke = node.stroke;
     group.appendChild(shape);
-    group.appendChild(this.renderNodeText(node));
+    const textEl = this.renderNodeText(node);
+    if (node.textColor) textEl.style.fill = node.textColor;
+    group.appendChild(textEl);
+    if (node.locked) {
+      group.appendChild(this.renderLockBadge(node));
+    }
 
     const scale = this.documentData.viewport.scale || 1;
     if (soloSelected && !this.readonly && SELECTION_BOX_TYPES.has(node.type)) {
@@ -4557,6 +5010,132 @@ export class VdFlowchart {
     return textElement;
   }
 
+  buildInspectorColorSwatches(activePreset = 'default', disabled = this.readonly) {
+    const normalizedActive = activePreset || 'default';
+    const grid = createElement('div', { className: 'vd-flowchart-swatch-grid' });
+    FLOWCHART_COLOR_PRESETS.forEach((preset) => {
+      const active = preset === normalizedActive;
+      const button = createElement('button', {
+        className: `vd-flowchart-swatch vd-flowchart-swatch--${preset}${active ? ' is-active' : ''}`,
+        title: FLOWCHART_COLOR_PRESET_LABELS[preset] || preset,
+        disabled,
+      });
+      button.setAttribute('type', 'button');
+      button.setAttribute('data-color-preset', preset);
+      button.setAttribute('aria-label', `Color ${FLOWCHART_COLOR_PRESET_LABELS[preset] || preset}`);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      grid.appendChild(button);
+    });
+    return grid;
+  }
+
+  buildInspectorArrangeRow(disabled = this.readonly) {
+    const grid = createElement('div', { className: 'vd-flowchart-action-grid' });
+    const actions = [
+      {
+        action: 'bring-to-front',
+        label: 'Front',
+        title: 'Bring to front (Cmd/Ctrl+Shift+])',
+      },
+      {
+        action: 'bring-forward',
+        label: 'Forward',
+        title: 'Bring forward (Cmd/Ctrl+])',
+      },
+      {
+        action: 'send-backward',
+        label: 'Backward',
+        title: 'Send backward (Cmd/Ctrl+[)',
+      },
+      {
+        action: 'send-to-back',
+        label: 'Back',
+        title: 'Send to back (Cmd/Ctrl+Shift+[)',
+      },
+    ];
+    actions.forEach((item) => {
+      const btn = createElement('button', {
+        className: 'vd-flowchart-btn vd-flowchart-action-btn',
+        text: item.label,
+        title: item.title,
+        disabled,
+      });
+      btn.setAttribute('type', 'button');
+      btn.setAttribute('data-arrange-action', item.action);
+      grid.appendChild(btn);
+    });
+    return grid;
+  }
+
+  buildInspectorAlignRow(nodeCount, disabled = this.readonly) {
+    const wrap = createElement('div', { className: 'vd-flowchart-inspector-stack' });
+    const alignGrid = createElement('div', { className: 'vd-flowchart-action-grid' });
+    const alignments = [
+      { action: 'left', label: 'Left', title: 'Align left edges' },
+      { action: 'center', label: 'Center', title: 'Align horizontal centers' },
+      { action: 'right', label: 'Right', title: 'Align right edges' },
+      { action: 'top', label: 'Top', title: 'Align top edges' },
+      { action: 'middle', label: 'Middle', title: 'Align vertical centers' },
+      { action: 'bottom', label: 'Bottom', title: 'Align bottom edges' },
+    ];
+    alignments.forEach((item) => {
+      const btn = createElement('button', {
+        className: 'vd-flowchart-btn vd-flowchart-action-btn',
+        text: item.label,
+        title: item.title,
+        disabled: disabled || nodeCount < 2,
+      });
+      btn.setAttribute('type', 'button');
+      btn.setAttribute('data-align-action', item.action);
+      alignGrid.appendChild(btn);
+    });
+    wrap.appendChild(createField('Align', alignGrid));
+
+    const distributeGrid = createElement('div', { className: 'vd-flowchart-action-grid' });
+    [
+      { action: 'horizontal', label: 'Distribute H', title: 'Distribute horizontally' },
+      { action: 'vertical', label: 'Distribute V', title: 'Distribute vertically' },
+    ].forEach((item) => {
+      const btn = createElement('button', {
+        className: 'vd-flowchart-btn vd-flowchart-action-btn',
+        text: item.label,
+        title: item.title,
+        disabled: disabled || nodeCount < 3,
+      });
+      btn.setAttribute('type', 'button');
+      btn.setAttribute('data-distribute-action', item.action);
+      distributeGrid.appendChild(btn);
+    });
+    wrap.appendChild(createField('Distribute', distributeGrid));
+    return wrap;
+  }
+
+  buildInspectorUtilityRow({ showLock = true, locked = false, disabled = this.readonly } = {}) {
+    const grid = createElement('div', { className: 'vd-flowchart-action-grid' });
+    if (showLock) {
+      const lockBtn = createElement('button', {
+        className: `vd-flowchart-btn vd-flowchart-action-btn${locked ? ' is-active' : ''}`,
+        text: locked ? 'Unlock' : 'Lock',
+        title: 'Toggle node lock (Cmd/Ctrl+L)',
+        disabled,
+      });
+      lockBtn.setAttribute('type', 'button');
+      lockBtn.setAttribute('data-lock-toggle', '');
+      lockBtn.setAttribute('aria-pressed', locked ? 'true' : 'false');
+      grid.appendChild(lockBtn);
+    }
+    const resetBtn = createElement('button', {
+      className: 'vd-flowchart-btn vd-flowchart-action-btn',
+      text: 'Reset color',
+      title: 'Reset to theme default color',
+      disabled,
+    });
+    resetBtn.setAttribute('type', 'button');
+    resetBtn.setAttribute('data-color-reset', '');
+    grid.appendChild(resetBtn);
+    return grid;
+  }
+
   renderSelectionPanel() {
     clearChildren(this.selectionFields);
     this.deleteButton.disabled = this.readonly || !this.selection;
@@ -4573,11 +5152,37 @@ export class VdFlowchart {
     }
 
     if (this.hasMultiSelection()) {
+      const selectedIds = this.getSelectedNodeIds();
+      const selectedNodes = selectedIds.map((id) => this.findNode(id)).filter(Boolean);
+      const allLocked = selectedNodes.length > 0 && selectedNodes.every((n) => n.locked);
+      this.deleteButton.disabled = this.readonly || allLocked;
+      const sharedColor =
+        selectedNodes.length > 0 &&
+        selectedNodes.every((n) => (n.color || 'default') === (selectedNodes[0].color || 'default'))
+          ? selectedNodes[0].color || 'default'
+          : '';
+
       this.selectionMeta.textContent = `${this.selectedNodeIds.size} nodes selected`;
       this.selectionFields.appendChild(
         createElement('p', {
           className: 'vd-flowchart-selection-empty',
           text: 'Drag, nudge with Alt+Arrow, copy, duplicate, or delete them together.',
+        }),
+      );
+      this.selectionFields.appendChild(
+        createField('Color preset', this.buildInspectorColorSwatches(sharedColor, this.readonly)),
+      );
+      this.selectionFields.appendChild(
+        this.buildInspectorAlignRow(selectedNodes.length, this.readonly),
+      );
+      this.selectionFields.appendChild(
+        createField('Layer order', this.buildInspectorArrangeRow(this.readonly)),
+      );
+      this.selectionFields.appendChild(
+        this.buildInspectorUtilityRow({
+          showLock: true,
+          locked: allLocked,
+          disabled: this.readonly,
         }),
       );
       return;
@@ -4591,8 +5196,10 @@ export class VdFlowchart {
         return;
       }
 
-      this.selectionMeta.textContent = `Node ${node.id} · ${node.type} · ${Math.round(node.x)}, ${Math.round(node.y)}`;
-      const typeSelect = createElement('select');
+      const isLocked = Boolean(node.locked);
+      this.deleteButton.disabled = this.readonly || isLocked;
+      this.selectionMeta.textContent = `Node ${node.id} · ${node.type} · ${Math.round(node.x)}, ${Math.round(node.y)}${isLocked ? ' · locked' : ''}`;
+      const typeSelect = createElement('select', { disabled: this.readonly || isLocked });
       typeSelect.setAttribute('data-field', 'node-type');
       FLOWCHART_NODE_TYPES.forEach((type) => {
         const option = createElement('option', { value: type, text: type.replace('-', ' ') });
@@ -4601,15 +5208,27 @@ export class VdFlowchart {
         typeSelect.appendChild(option);
       });
 
-      const textArea = createElement('textarea', { value: node.text, rows: 5 });
+      const textArea = createElement('textarea', {
+        value: node.text,
+        rows: 5,
+        disabled: this.readonly || isLocked,
+      });
       textArea.setAttribute('data-field', 'node-text');
 
-      const widthInput = createElement('input', { value: node.width, type: 'number' });
+      const widthInput = createElement('input', {
+        value: node.width,
+        type: 'number',
+        disabled: this.readonly || isLocked,
+      });
       widthInput.setAttribute('data-field', 'node-width');
       widthInput.setAttribute('min', String(this.minNodeSize));
       widthInput.setAttribute('max', String(this.maxNodeSize));
 
-      const heightInput = createElement('input', { value: node.height, type: 'number' });
+      const heightInput = createElement('input', {
+        value: node.height,
+        type: 'number',
+        disabled: this.readonly || isLocked,
+      });
       heightInput.setAttribute('data-field', 'node-height');
       heightInput.setAttribute('min', String(this.minNodeSize));
       heightInput.setAttribute('max', String(this.maxNodeSize));
@@ -4632,6 +5251,54 @@ export class VdFlowchart {
           }),
         );
       }
+
+      this.selectionFields.appendChild(
+        createField(
+          'Color preset',
+          this.buildInspectorColorSwatches(node.color || 'default', this.readonly),
+        ),
+      );
+
+      const customColorsGrid = createElement('div', { className: 'vd-flowchart-field-grid' });
+      const fillInput = createElement('input', {
+        value: node.fill || '',
+        type: 'text',
+        disabled: this.readonly,
+      });
+      fillInput.setAttribute('data-field', 'node-fill');
+      fillInput.setAttribute('placeholder', 'Fill (e.g. #dbeafe)');
+
+      const strokeInput = createElement('input', {
+        value: node.stroke || '',
+        type: 'text',
+        disabled: this.readonly,
+      });
+      strokeInput.setAttribute('data-field', 'node-stroke');
+      strokeInput.setAttribute('placeholder', 'Stroke (e.g. #2563eb)');
+
+      const textColorInput = createElement('input', {
+        value: node.textColor || '',
+        type: 'text',
+        disabled: this.readonly,
+      });
+      textColorInput.setAttribute('data-field', 'node-text-color');
+      textColorInput.setAttribute('placeholder', 'Text (e.g. #1e3a8a)');
+
+      customColorsGrid.appendChild(createField('Fill', fillInput));
+      customColorsGrid.appendChild(createField('Border', strokeInput));
+      this.selectionFields.appendChild(customColorsGrid);
+      this.selectionFields.appendChild(createField('Text color', textColorInput));
+
+      this.selectionFields.appendChild(
+        createField('Layer order', this.buildInspectorArrangeRow(this.readonly)),
+      );
+      this.selectionFields.appendChild(
+        this.buildInspectorUtilityRow({
+          showLock: true,
+          locked: isLocked,
+          disabled: this.readonly,
+        }),
+      );
       return;
     }
 
@@ -4642,9 +5309,10 @@ export class VdFlowchart {
       return;
     }
 
+    const edgeStyleName = normalizeEdgeStrokeStyle(edge.strokeStyle);
     this.selectionMeta.textContent = `Edge ${edge.id} · ${edge.route} · ${formatNumber(edge.strokeWidth)}px · ${edge.startMarker} → ${edge.endMarker}`;
 
-    const routeSelect = createElement('select');
+    const routeSelect = createElement('select', { disabled: this.readonly });
     routeSelect.setAttribute('data-field', 'edge-route');
     FLOWCHART_EDGE_ROUTES.forEach((route) => {
       const option = createElement('option', {
@@ -4656,7 +5324,7 @@ export class VdFlowchart {
       routeSelect.appendChild(option);
     });
 
-    const startSelect = createElement('select');
+    const startSelect = createElement('select', { disabled: this.readonly });
     startSelect.setAttribute('data-field', 'edge-start-marker');
     FLOWCHART_EDGE_MARKERS.forEach((marker) => {
       const option = createElement('option', { value: marker, text: marker });
@@ -4665,7 +5333,7 @@ export class VdFlowchart {
       startSelect.appendChild(option);
     });
 
-    const endSelect = createElement('select');
+    const endSelect = createElement('select', { disabled: this.readonly });
     endSelect.setAttribute('data-field', 'edge-end-marker');
     FLOWCHART_EDGE_MARKERS.forEach((marker) => {
       const option = createElement('option', { value: marker, text: marker });
@@ -4674,7 +5342,7 @@ export class VdFlowchart {
       endSelect.appendChild(option);
     });
 
-    const widthSelect = createElement('select');
+    const widthSelect = createElement('select', { disabled: this.readonly });
     widthSelect.setAttribute('data-field', 'edge-stroke-preset');
     EDGE_STROKE_PRESETS.forEach((preset) => {
       const option = createElement('option', { value: preset.id, text: preset.label });
@@ -4683,16 +5351,58 @@ export class VdFlowchart {
       widthSelect.appendChild(option);
     });
 
-    const labelInput = createElement('textarea', { value: edge.label, rows: 4 });
+    const strokeStyleSelect = createElement('select', { disabled: this.readonly });
+    strokeStyleSelect.setAttribute('data-field', 'edge-stroke-style');
+    FLOWCHART_EDGE_STROKE_STYLES.forEach((style) => {
+      const option = createElement('option', {
+        value: style,
+        text: FLOWCHART_EDGE_STROKE_STYLE_LABELS[style] || style,
+      });
+      option.value = style;
+      option.selected = style === edgeStyleName;
+      strokeStyleSelect.appendChild(option);
+    });
+
+    const labelInput = createElement('textarea', {
+      value: edge.label,
+      rows: 4,
+      disabled: this.readonly,
+    });
     labelInput.setAttribute('data-field', 'edge-label');
 
     const markerGrid = createElement('div', { className: 'vd-flowchart-field-grid' });
     markerGrid.appendChild(createField('Route', routeSelect));
     markerGrid.appendChild(createField('Weight', widthSelect));
+    markerGrid.appendChild(createField('Style', strokeStyleSelect));
     markerGrid.appendChild(createField('Start', startSelect));
     markerGrid.appendChild(createField('End', endSelect));
     this.selectionFields.appendChild(markerGrid);
     this.selectionFields.appendChild(createField('Label', labelInput));
+
+    const activeEdgePreset =
+      edge.color && FLOWCHART_COLOR_PRESET_SET.has(edge.color) ? edge.color : 'default';
+    this.selectionFields.appendChild(
+      createField(
+        'Color preset',
+        this.buildInspectorColorSwatches(activeEdgePreset, this.readonly),
+      ),
+    );
+
+    const edgeColorInput = createElement('input', {
+      value: edge.color && !FLOWCHART_COLOR_PRESET_SET.has(edge.color) ? edge.color : '',
+      type: 'text',
+      disabled: this.readonly,
+    });
+    edgeColorInput.setAttribute('data-field', 'edge-color');
+    edgeColorInput.setAttribute('placeholder', 'Custom color (e.g. #2563eb)');
+    this.selectionFields.appendChild(createField('Custom color', edgeColorInput));
+
+    this.selectionFields.appendChild(
+      createField('Layer order', this.buildInspectorArrangeRow(this.readonly)),
+    );
+    this.selectionFields.appendChild(
+      this.buildInspectorUtilityRow({ showLock: false, disabled: this.readonly }),
+    );
   }
 
   syncJsonTextarea(force = false) {
@@ -5187,7 +5897,14 @@ export class VdFlowchart {
       sibling ||
       (['rounded-rect', 'rect', 'textbox'].includes(parent.type) ? parent : null) ||
       null;
-    if (source) return { type: source.type, width: source.width, height: source.height };
+    if (source) {
+      const template = { type: source.type, width: source.width, height: source.height };
+      if (source.color) template.color = source.color;
+      if (source.fill) template.fill = source.fill;
+      if (source.stroke) template.stroke = source.stroke;
+      if (source.textColor) template.textColor = source.textColor;
+      return template;
+    }
     const spec = DEFAULT_NODE_SPECS['rounded-rect'];
     return { type: 'rounded-rect', width: spec.width, height: spec.height };
   }
@@ -5231,6 +5948,8 @@ export class VdFlowchart {
           strokeWidth: styleSource.strokeWidth,
           startMarker: styleSource.startMarker,
           endMarker: styleSource.endMarker,
+          ...(styleSource.color ? { color: styleSource.color } : {}),
+          ...(styleSource.strokeStyle ? { strokeStyle: styleSource.strokeStyle } : {}),
         }
       : { endMarker: 'arrow' };
 
@@ -5492,6 +6211,31 @@ export class VdFlowchart {
     node.width = clampNodeWidth(nextType, patch.width, node.width, this.nodeSizeBounds());
     node.height = clampNodeHeight(nextType, patch.height, node.height, this.nodeSizeBounds());
 
+    if ('color' in patch) {
+      const nextColor = normalizeColorPreset(patch.color);
+      if (nextColor) node.color = nextColor;
+      else delete node.color;
+    }
+    if ('fill' in patch) {
+      const nextFill = sanitizeCssColor(patch.fill);
+      if (nextFill) node.fill = nextFill;
+      else delete node.fill;
+    }
+    if ('stroke' in patch) {
+      const nextStroke = sanitizeCssColor(patch.stroke);
+      if (nextStroke) node.stroke = nextStroke;
+      else delete node.stroke;
+    }
+    if ('textColor' in patch) {
+      const nextTextColor = sanitizeCssColor(patch.textColor);
+      if (nextTextColor) node.textColor = nextTextColor;
+      else delete node.textColor;
+    }
+    if ('locked' in patch) {
+      if (patch.locked) node.locked = true;
+      else delete node.locked;
+    }
+
     if (isPlainObject(patch.data)) {
       node.data = deepClone(patch.data);
     }
@@ -5620,6 +6364,16 @@ export class VdFlowchart {
     if (patch.label != null) {
       edge.label = String(patch.label);
     }
+    if ('color' in patch) {
+      const nextColor = normalizeEdgeColor(patch.color);
+      if (nextColor) edge.color = nextColor;
+      else delete edge.color;
+    }
+    if ('strokeStyle' in patch) {
+      const nextStrokeStyle = normalizeEdgeStrokeStyle(patch.strokeStyle);
+      if (nextStrokeStyle && nextStrokeStyle !== 'solid') edge.strokeStyle = nextStrokeStyle;
+      else delete edge.strokeStyle;
+    }
     if (isPlainObject(patch.data)) {
       edge.data = deepClone(patch.data);
     }
@@ -5705,10 +6459,466 @@ export class VdFlowchart {
   deleteSelection() {
     if (!this.selection || this.readonly) return false;
     if (this.hasMultiSelection()) {
-      return this.removeNodeIds(new Set(this.getSelectedNodeIds()), 'node:remove');
+      const unlockedIds = this.getSelectedNodeIds().filter((id) => !this.findNode(id)?.locked);
+      if (!unlockedIds.length) return false;
+      return this.removeNodeIds(new Set(unlockedIds), 'node:remove');
     }
-    if (this.selection.kind === 'node') return this.removeNode(this.selection.id);
+    if (this.selection.kind === 'node') {
+      const node = this.findNode(this.selection.id);
+      if (node?.locked) return false;
+      return this.removeNode(this.selection.id);
+    }
     return this.removeEdge(this.selection.id);
+  }
+
+  // --- Coloring, Layer Order, Align/Distribute, Locking, SVG Export ---------
+
+  setNodeColor(nodeId, colorOrPatch) {
+    if (this.readonly) return null;
+    const id = sanitizeId(nodeId);
+    if (!this.findNode(id)) return null;
+    let patch;
+    if (isPlainObject(colorOrPatch)) {
+      patch = {};
+      if ('color' in colorOrPatch) patch.color = colorOrPatch.color;
+      if ('fill' in colorOrPatch) patch.fill = colorOrPatch.fill;
+      if ('stroke' in colorOrPatch) patch.stroke = colorOrPatch.stroke;
+      if ('textColor' in colorOrPatch) patch.textColor = colorOrPatch.textColor;
+    } else if (colorOrPatch == null || colorOrPatch === '' || colorOrPatch === 'default') {
+      patch = { color: null, fill: null, stroke: null, textColor: null };
+    } else {
+      const token = String(colorOrPatch).trim();
+      if (FLOWCHART_COLOR_PRESET_SET.has(token)) {
+        patch = { color: token };
+      } else {
+        const css = sanitizeCssColor(token);
+        if (!css) return null;
+        patch = { fill: css };
+      }
+    }
+    return this.updateNode(id, patch, { reason: 'node:color' });
+  }
+
+  setEdgeColor(edgeId, color) {
+    if (this.readonly) return null;
+    const id = sanitizeId(edgeId);
+    if (!this.findEdge(id)) return null;
+    const nextColor =
+      color == null || color === '' || color === 'default'
+        ? null
+        : isPlainObject(color)
+          ? normalizeEdgeColor(color.color ?? color.stroke)
+          : normalizeEdgeColor(color);
+    return this.updateEdge(id, { color: nextColor }, { reason: 'edge:color' });
+  }
+
+  setSelectionColor(colorOrPatch) {
+    if (this.readonly || !this.selection) return this;
+    if (this.selection.kind === 'edge') {
+      this.setEdgeColor(this.selection.id, colorOrPatch);
+      return this;
+    }
+    const ids = this.getSelectedNodeIds();
+    if (!ids.length) return this;
+    this.batchHistory('node:color', () => {
+      ids.forEach((id) => {
+        this.setNodeColor(id, colorOrPatch);
+      });
+    });
+    return this;
+  }
+
+  clearSelectionColor() {
+    return this.setSelectionColor(null);
+  }
+
+  reorderArrayLayer(items, targetIds, direction) {
+    const idSet = new Set(targetIds);
+    if (!idSet.size || items.length < 2) return null;
+    let next;
+    if (direction === 'front') {
+      next = [
+        ...items.filter((item) => !idSet.has(item.id)),
+        ...items.filter((item) => idSet.has(item.id)),
+      ];
+    } else if (direction === 'back') {
+      next = [
+        ...items.filter((item) => idSet.has(item.id)),
+        ...items.filter((item) => !idSet.has(item.id)),
+      ];
+    } else if (direction === 'forward') {
+      next = [...items];
+      for (let i = next.length - 2; i >= 0; i -= 1) {
+        if (idSet.has(next[i].id) && !idSet.has(next[i + 1].id)) {
+          const temp = next[i];
+          next[i] = next[i + 1];
+          next[i + 1] = temp;
+        }
+      }
+    } else if (direction === 'backward') {
+      next = [...items];
+      for (let i = 1; i < next.length; i += 1) {
+        if (idSet.has(next[i].id) && !idSet.has(next[i - 1].id)) {
+          const temp = next[i];
+          next[i] = next[i - 1];
+          next[i - 1] = temp;
+        }
+      }
+    } else {
+      return null;
+    }
+
+    const changed = next.some((item, index) => item.id !== items[index].id);
+    return changed ? next : null;
+  }
+
+  reorderLayer(direction, targetId) {
+    if (this.readonly) return this;
+    let explicitIds = [];
+    if (Array.isArray(targetId)) {
+      explicitIds = targetId.map(sanitizeId).filter(Boolean);
+    } else if (typeof targetId === 'string' && targetId.trim()) {
+      explicitIds = [sanitizeId(targetId)];
+    }
+
+    if (explicitIds.length) {
+      const nodeIdSet = new Set(this.documentData.nodes.map((n) => n.id));
+      const matchingNodes = explicitIds.filter((id) => nodeIdSet.has(id));
+      if (matchingNodes.length) {
+        const reordered = this.reorderArrayLayer(this.documentData.nodes, matchingNodes, direction);
+        if (reordered) {
+          this.documentData.nodes = reordered;
+          this.render();
+          this.emitChange('node:order', { direction, nodeIds: matchingNodes });
+        }
+        return this;
+      }
+
+      const edgeIdSet = new Set(this.documentData.edges.map((e) => e.id));
+      const matchingEdges = explicitIds.filter((id) => edgeIdSet.has(id));
+      if (matchingEdges.length) {
+        const reordered = this.reorderArrayLayer(this.documentData.edges, matchingEdges, direction);
+        if (reordered) {
+          this.documentData.edges = reordered;
+          this.render();
+          this.emitChange('edge:order', { direction, edgeIds: matchingEdges });
+        }
+      }
+      return this;
+    }
+
+    if (!this.selection) return this;
+    if (this.selection.kind === 'edge') {
+      const reordered = this.reorderArrayLayer(
+        this.documentData.edges,
+        [this.selection.id],
+        direction,
+      );
+      if (reordered) {
+        this.documentData.edges = reordered;
+        this.render();
+        this.emitChange('edge:order', { direction, edgeIds: [this.selection.id] });
+      }
+      return this;
+    }
+
+    const ids = this.getSelectedNodeIds();
+    const reordered = this.reorderArrayLayer(this.documentData.nodes, ids, direction);
+    if (reordered) {
+      this.documentData.nodes = reordered;
+      this.render();
+      this.emitChange('node:order', { direction, nodeIds: ids });
+    }
+    return this;
+  }
+
+  bringToFront(targetId) {
+    return this.reorderLayer('front', targetId);
+  }
+
+  bringForward(targetId) {
+    return this.reorderLayer('forward', targetId);
+  }
+
+  sendBackward(targetId) {
+    return this.reorderLayer('backward', targetId);
+  }
+
+  sendToBack(targetId) {
+    return this.reorderLayer('back', targetId);
+  }
+
+  alignNodes(alignment = 'left', nodeIds) {
+    if (this.readonly || !FLOWCHART_NODE_ALIGNMENTS.includes(alignment)) return this;
+    const ids = Array.isArray(nodeIds)
+      ? nodeIds.map(sanitizeId).filter(Boolean)
+      : this.getSelectedNodeIds();
+    const hidden = this.getHiddenNodeIds();
+    const nodes = ids.map((id) => this.findNode(id)).filter((node) => node && !hidden.has(node.id));
+    if (nodes.length < 2) return this;
+
+    const bounds = getBounds(nodes);
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    const movedIds = [];
+
+    nodes.forEach((node) => {
+      if (node.locked) return;
+      let nextX = node.x;
+      let nextY = node.y;
+      if (alignment === 'left') nextX = formatNumber(bounds.left);
+      else if (alignment === 'center') nextX = formatNumber(centerX - node.width / 2);
+      else if (alignment === 'right') nextX = formatNumber(bounds.right - node.width);
+      else if (alignment === 'top') nextY = formatNumber(bounds.top);
+      else if (alignment === 'middle') nextY = formatNumber(centerY - node.height / 2);
+      else if (alignment === 'bottom') nextY = formatNumber(bounds.bottom - node.height);
+
+      if (nextX !== node.x || nextY !== node.y) {
+        node.x = nextX;
+        node.y = nextY;
+        movedIds.push(node.id);
+      }
+    });
+
+    if (movedIds.length) {
+      this.render();
+      this.emitChange('node:align', { alignment, nodeIds: movedIds });
+    }
+    return this;
+  }
+
+  distributeNodes(axis = 'horizontal', nodeIds) {
+    if (this.readonly || !FLOWCHART_DISTRIBUTE_AXES.includes(axis)) return this;
+    const ids = Array.isArray(nodeIds)
+      ? nodeIds.map(sanitizeId).filter(Boolean)
+      : this.getSelectedNodeIds();
+    const hidden = this.getHiddenNodeIds();
+    const nodes = ids.map((id) => this.findNode(id)).filter((node) => node && !hidden.has(node.id));
+    if (nodes.length < 3) return this;
+
+    const sorted = [...nodes].sort((a, b) =>
+      axis === 'horizontal'
+        ? a.x + a.width / 2 - (b.x + b.width / 2)
+        : a.y + a.height / 2 - (b.y + b.height / 2),
+    );
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const movedIds = [];
+
+    if (axis === 'horizontal') {
+      const totalSpan = last.x + last.width - first.x;
+      const totalSize = sorted.reduce((sum, node) => sum + node.width, 0);
+      const gap = (totalSpan - totalSize) / (sorted.length - 1);
+      let cursor = first.x;
+      sorted.forEach((node, index) => {
+        if (index > 0 && index < sorted.length - 1 && !node.locked) {
+          const nextX = formatNumber(cursor);
+          if (nextX !== node.x) {
+            node.x = nextX;
+            movedIds.push(node.id);
+          }
+        }
+        cursor += node.width + gap;
+      });
+    } else {
+      const totalSpan = last.y + last.height - first.y;
+      const totalSize = sorted.reduce((sum, node) => sum + node.height, 0);
+      const gap = (totalSpan - totalSize) / (sorted.length - 1);
+      let cursor = first.y;
+      sorted.forEach((node, index) => {
+        if (index > 0 && index < sorted.length - 1 && !node.locked) {
+          const nextY = formatNumber(cursor);
+          if (nextY !== node.y) {
+            node.y = nextY;
+            movedIds.push(node.id);
+          }
+        }
+        cursor += node.height + gap;
+      });
+    }
+
+    if (movedIds.length) {
+      this.render();
+      this.emitChange('node:distribute', { axis, nodeIds: movedIds });
+    }
+    return this;
+  }
+
+  setNodeLocked(nodeId, locked = true) {
+    if (this.readonly) return false;
+    let targetIds;
+    let nextLocked = Boolean(locked);
+    if (typeof nodeId === 'boolean') {
+      nextLocked = nodeId;
+      targetIds = this.getSelectedNodeIds();
+    } else if (Array.isArray(nodeId)) {
+      targetIds = nodeId.map(sanitizeId).filter(Boolean);
+    } else if (nodeId == null) {
+      targetIds = this.getSelectedNodeIds();
+    } else {
+      targetIds = [sanitizeId(nodeId)];
+    }
+
+    const changedNodes = [];
+    targetIds.forEach((id) => {
+      const node = this.findNode(id);
+      if (!node || Boolean(node.locked) === nextLocked) return;
+      if (nextLocked) node.locked = true;
+      else delete node.locked;
+      changedNodes.push(deepClone(node));
+    });
+
+    if (!changedNodes.length) return false;
+    if (nextLocked && this.textEditor && targetIds.includes(this.textEditor.nodeId)) {
+      this.stopTextEdit({ commit: true });
+    }
+    this.render();
+    this.emitChange('node:lock', {
+      node: changedNodes[0],
+      nodes: changedNodes,
+      locked: nextLocked,
+    });
+    return true;
+  }
+
+  toggleNodeLocked(nodeId) {
+    if (this.readonly) return false;
+    if (nodeId != null && typeof nodeId !== 'boolean' && !Array.isArray(nodeId)) {
+      const node = this.findNode(sanitizeId(nodeId));
+      return node ? this.setNodeLocked(node.id, !node.locked) : false;
+    }
+    const ids = Array.isArray(nodeId)
+      ? nodeId.map(sanitizeId).filter(Boolean)
+      : this.getSelectedNodeIds();
+    const nodes = ids.map((id) => this.findNode(id)).filter(Boolean);
+    if (!nodes.length) return false;
+    const shouldLock = nodes.some((node) => !node.locked);
+    return this.setNodeLocked(ids, shouldLock);
+  }
+
+  exportSvg(options = {}) {
+    const padding = Math.max(0, toFiniteNumber(options.padding, 32));
+    const visibleNodes = this.getVisibleNodes();
+    let viewX = 0;
+    let viewY = 0;
+    let viewWidth = 800;
+    let viewHeight = 560;
+
+    if (visibleNodes.length) {
+      const bounds = getBounds(visibleNodes);
+      viewX = formatNumber(bounds.left - padding);
+      viewY = formatNumber(bounds.top - padding);
+      viewWidth = formatNumber(Math.max(1, bounds.right - bounds.left + padding * 2));
+      viewHeight = formatNumber(Math.max(1, bounds.bottom - bounds.top + padding * 2));
+    }
+
+    const exportRoot = svgEl('svg', {
+      xmlns: SVG_NS,
+      viewBox: `${viewX} ${viewY} ${viewWidth} ${viewHeight}`,
+      width: viewWidth,
+      height: viewHeight,
+      class: 'vd-flowchart-export',
+    });
+
+    const styleEl = svgEl('style');
+    styleEl.textContent = [
+      '.vd-flowchart-export { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }',
+      '.vd-flowchart-node-shape { fill: #ffffff; stroke: #475569; stroke-width: 2px; }',
+      '.vd-flowchart-node--textbox .vd-flowchart-node-shape { stroke-dasharray: 6 4; }',
+      '.vd-flowchart-node--junction .vd-flowchart-node-shape { fill: #2563eb; stroke: #ffffff; }',
+      '.vd-flowchart-node-text { fill: #0f172a; font-size: 14px; font-weight: 600; dominant-baseline: middle; text-anchor: middle; }',
+      '.vd-flowchart-edge-path { fill: none; stroke: #475569; stroke-linecap: round; stroke-linejoin: round; }',
+      '.vd-flowchart-edge-label { fill: #0f172a; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; }',
+    ].join('\n');
+    exportRoot.appendChild(styleEl);
+
+    if (this.markerDefs) {
+      const defsClone = this.markerDefs.cloneNode(true);
+      defsClone.querySelectorAll('path, circle').forEach((shape) => {
+        const fill = shape.getAttribute('fill') || '';
+        if (fill.includes('--vd-flowchart-palette-')) {
+          const match = fill.match(/--vd-flowchart-palette-([a-z]+)-edge,\s*([^)]+)\)/);
+          if (match) shape.setAttribute('fill', match[2].trim());
+        } else if (fill.includes('--vd-flowchart-edge')) {
+          shape.setAttribute('fill', '#475569');
+        }
+      });
+      exportRoot.appendChild(defsClone);
+    }
+
+    if (
+      typeof options.background === 'string' &&
+      options.background.trim() &&
+      options.background.trim() !== 'transparent'
+    ) {
+      const bgColor =
+        options.background.trim() === 'theme'
+          ? '#ffffff'
+          : sanitizeCssColor(options.background.trim()) || '#ffffff';
+      exportRoot.appendChild(
+        svgEl('rect', {
+          x: viewX,
+          y: viewY,
+          width: viewWidth,
+          height: viewHeight,
+          fill: bgColor,
+        }),
+      );
+    }
+
+    const sceneGroup = svgEl('g', { class: 'vd-flowchart-export-scene' });
+    const edgesClone = this.edgesLayer.cloneNode(true);
+    edgesClone
+      .querySelectorAll('.vd-flowchart-edge-hit, .vd-flowchart-edge-selection')
+      .forEach((el) => el.remove());
+    edgesClone.querySelectorAll('.vd-flowchart-edge').forEach((edgeGroup) => {
+      edgeGroup.classList.remove('is-selected', 'is-reconnecting');
+      const edgeId = edgeGroup.getAttribute('data-edge-id');
+      const edge = this.findEdge(edgeId);
+      const pathEl = edgeGroup.querySelector('.vd-flowchart-edge-path');
+      if (edge && pathEl) {
+        if (edge.color) {
+          const presetColors = FLOWCHART_COLOR_PRESET_FALLBACKS[edge.color];
+          pathEl.setAttribute('stroke', presetColors ? presetColors.edge : edge.color);
+        } else {
+          pathEl.setAttribute('stroke', '#475569');
+        }
+      }
+    });
+
+    const nodesClone = this.nodesLayer.cloneNode(true);
+    nodesClone
+      .querySelectorAll(
+        '.vd-flowchart-ports, .vd-flowchart-resize-handles, .vd-flowchart-node-lock, .vd-flowchart-collapse-badge',
+      )
+      .forEach((el) => el.remove());
+    nodesClone.querySelectorAll('.vd-flowchart-node').forEach((nodeGroup) => {
+      nodeGroup.classList.remove('is-selected', 'is-multi-selected', 'is-dragging');
+      const nodeId = nodeGroup.getAttribute('data-node-id');
+      const node = this.findNode(nodeId);
+      if (!node) return;
+      const shapeEl = nodeGroup.querySelector('.vd-flowchart-node-shape');
+      const labelEl = nodeGroup.querySelector('.vd-flowchart-node-text');
+      const presetColors = node.color ? FLOWCHART_COLOR_PRESET_FALLBACKS[node.color] : null;
+      if (shapeEl) {
+        const fill =
+          node.fill || presetColors?.fill || (node.type === 'junction' ? '#2563eb' : '#ffffff');
+        const stroke =
+          node.stroke || presetColors?.stroke || (node.type === 'junction' ? '#ffffff' : '#475569');
+        shapeEl.setAttribute('fill', fill);
+        shapeEl.setAttribute('stroke', stroke);
+      }
+      if (labelEl) {
+        const textColor = node.textColor || presetColors?.text || '#0f172a';
+        labelEl.setAttribute('fill', textColor);
+      }
+    });
+
+    sceneGroup.appendChild(edgesClone);
+    sceneGroup.appendChild(nodesClone);
+    exportRoot.appendChild(sceneGroup);
+
+    return exportRoot.outerHTML;
   }
 
   nodeSizeBounds() {
@@ -5871,8 +7081,12 @@ export class VdFlowchart {
         this.reconnectEdgeId = null;
       }
       this.readonly = Boolean(options.readonly);
+      if (this.readonly && this.colorPopoverOpen) {
+        this.toggleColorPopover(false);
+      }
       this.root.classList.toggle('vd-flowchart-readonly', this.readonly);
       this.arrangeSelect.disabled = this.readonly;
+      if (this.colorButton) this.colorButton.disabled = this.readonly;
       this.clearButton.disabled = this.readonly;
       this.loadJsonButton.disabled = this.readonly;
     }

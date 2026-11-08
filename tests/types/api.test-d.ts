@@ -8,9 +8,17 @@ import {
   computeLayout,
   LAYOUT_MODES,
   FLOWCHART_NODE_TYPES,
+  FLOWCHART_COLOR_PRESETS,
+  FLOWCHART_EDGE_STROKE_STYLES,
+  FLOWCHART_NODE_ALIGNMENTS,
+  FLOWCHART_DISTRIBUTE_AXES,
   FLOWCHART_KEYBOARD_SHORTCUTS,
   VD_FLOWCHART_VERSION,
   VdFlowchart as VdFlowchartVue,
+  type FlowchartColorPreset,
+  type FlowchartEdgeStrokeStyle,
+  type FlowchartNodeAlignment,
+  type FlowchartDistributeAxis,
   type FlowchartKeyboardShortcuts,
   type FlowchartNode,
   type FlowchartEdge,
@@ -65,7 +73,45 @@ const visibleNodes: FlowchartNode[] = editor.getVisibleNodes();
 const labelled: boolean =
   editor.selectSideEdge('a', 'right') && editor.startEdgeLabelEdit('e1', { initialText: 'y' });
 editor.setMinimapEnabled(false).centerViewOn(0, 0);
-const savedNode: FlowchartNode = { ...node, collapsed: true };
+const savedNode: FlowchartNode = {
+  ...node,
+  collapsed: true,
+  color: 'primary',
+  fill: '#dbeafe',
+  stroke: '#2563eb',
+  textColor: '#1e3a8a',
+  locked: true,
+};
+const coloredNode: FlowchartNode | null = editor.setNodeColor('a', 'success');
+const customColoredNode: FlowchartNode | null = editor.setNodeColor('a', {
+  fill: '#fee2e2',
+  stroke: '#dc2626',
+});
+const coloredEdge: FlowchartEdge | null = editor.setEdgeColor('e1', 'warning');
+editor.setSelectionColor('violet').clearSelectionColor();
+editor.bringToFront('a').bringForward('a').sendBackward('a').sendToBack('a');
+editor.alignNodes('center', ['a', 'b']).distributeNodes('horizontal', ['a', 'b', 'c']);
+const lockResult: boolean = editor.setNodeLocked('a', true) && editor.toggleNodeLocked('a');
+const copied: boolean = editor.copySelection();
+const pasted = editor.pasteSelection();
+const cut: boolean = editor.cutSelection();
+const svgExport: string = editor.exportSvg({ padding: 24, background: 'theme' });
+const colorPresets: readonly FlowchartColorPreset[] = FLOWCHART_COLOR_PRESETS;
+const strokeStyles: readonly FlowchartEdgeStrokeStyle[] = FLOWCHART_EDGE_STROKE_STYLES;
+const alignments: readonly FlowchartNodeAlignment[] = FLOWCHART_NODE_ALIGNMENTS;
+const distributeAxes: readonly FlowchartDistributeAxis[] = FLOWCHART_DISTRIBUTE_AXES;
+void coloredNode;
+void customColoredNode;
+void coloredEdge;
+void lockResult;
+void copied;
+void pasted;
+void cut;
+void svgExport;
+void colorPresets;
+void strokeStyles;
+void alignments;
+void distributeAxes;
 
 editor.layout('radial', { root: 'a', radius: 240 }).autoArrange({ columns: 4 });
 const canUndo: boolean = editor.canUndo();

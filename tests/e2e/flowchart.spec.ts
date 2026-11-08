@@ -37,7 +37,7 @@ test.describe('flowchart smoke — built dist entry mounts the editor', () => {
     const version = await page.evaluate(
       () => (window as unknown as FlowchartWindow).flowchartVersion,
     );
-    expect(version).toBe('1.5.1');
+    expect(version).toBe('1.6.0');
   });
 
   test('renders seeded nodes and serializes version 1.3.0', async ({ page }) => {

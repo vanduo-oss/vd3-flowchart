@@ -8,9 +8,25 @@ export type FlowchartNodeType =
 export type FlowchartPort = 'top' | 'right' | 'bottom' | 'left';
 export type FlowchartEdgeMarker = 'none' | 'arrow' | 'dot';
 export type FlowchartEdgeRoute = 'curve' | 'straight' | 'orthogonal';
+export type FlowchartEdgeStrokeStyle = 'solid' | 'dashed' | 'dotted' | 'animated';
 export type FlowchartEdgeKind = 'line' | 'arrow';
 export type FlowchartDirection = 'right' | 'left' | 'up' | 'down';
 export type LayoutMode = 'tree' | 'radial' | 'grid';
+export type FlowchartColorPreset =
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
+  | 'violet'
+  | 'teal'
+  | 'orange'
+  | 'pink'
+  | 'neutral';
+export type FlowchartNodeAlignment = 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom';
+export type FlowchartDistributeAxis = 'horizontal' | 'vertical';
 /**
  * `'mindmap'` (default): Tab adds a child, Enter adds a sibling, F2/Space or
  * typing edits. `'basic'`: Enter edits and Tab moves focus as usual.
@@ -34,6 +50,16 @@ export interface FlowchartNode {
   data: Record<string, unknown>;
   /** Present (and true) only on collapsed nodes; document format 1.3.0. */
   collapsed?: true;
+  /** Named theme-adaptive color preset (omitted when `'default'`). */
+  color?: Exclude<FlowchartColorPreset, 'default'>;
+  /** Custom CSS fill override for the node shape. */
+  fill?: string;
+  /** Custom CSS stroke override for the node shape. */
+  stroke?: string;
+  /** Custom CSS fill override for the node text label. */
+  textColor?: string;
+  /** Present (and true) only when the node is locked against drag/resize/delete. */
+  locked?: true;
 }
 
 export interface FlowchartEndpoint {
@@ -52,6 +78,24 @@ export interface FlowchartEdge {
   route: FlowchartEdgeRoute;
   label: string;
   data: Record<string, unknown>;
+  /** Named preset or custom CSS color (omitted when default). */
+  color?: Exclude<FlowchartColorPreset, 'default'> | string;
+  /** Stroke pattern style (omitted when `'solid'`). */
+  strokeStyle?: Exclude<FlowchartEdgeStrokeStyle, 'solid'>;
+}
+
+export interface FlowchartNodeColorPatch {
+  color?: FlowchartColorPreset | string | null;
+  fill?: string | null;
+  stroke?: string | null;
+  textColor?: string | null;
+}
+
+export interface ExportSvgOptions {
+  /** Padding in world units around visible content (default 32). */
+  padding?: number;
+  /** Optional background color (`'transparent'`, `'theme'`, or CSS color). */
+  background?: string;
 }
 
 export interface FlowchartDocument {
@@ -87,6 +131,11 @@ export interface FlowchartNodeInput {
   text?: string;
   data?: Record<string, unknown>;
   collapsed?: boolean;
+  color?: FlowchartColorPreset | string | null;
+  fill?: string | null;
+  stroke?: string | null;
+  textColor?: string | null;
+  locked?: boolean;
   /** Place relative to another node instead of at the viewport center. */
   relativeTo?: string | FlowchartRelativeTo;
 }
@@ -108,6 +157,8 @@ export interface FlowchartEdgeInput {
   strokeWidth?: number;
   route?: FlowchartEdgeRoute;
   label?: string;
+  color?: FlowchartColorPreset | string | null;
+  strokeStyle?: FlowchartEdgeStrokeStyle | null;
   data?: Record<string, unknown>;
 }
 
@@ -292,9 +343,33 @@ export class VdFlowchart {
     options?: InsertSiblingNodeOptions,
   ): { node: FlowchartNode; edge: FlowchartEdge | null } | null;
   duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
+  copySelection(): boolean;
+  pasteClipboard(): FlowchartNode | FlowchartNode[] | null;
+  pasteSelection(): FlowchartNode | FlowchartNode[] | null;
+  cutSelection(): boolean;
   /** Collapse or expand a node's branch; undoable, reason `node:collapse`. */
   setCollapsed(nodeId: string, collapsed: boolean): boolean;
   toggleCollapsed(nodeId: string): boolean;
+  /** Set or clear a node's color preset or custom CSS fill/stroke/textColor. */
+  setNodeColor(
+    nodeId: string,
+    colorOrPatch: FlowchartColorPreset | string | FlowchartNodeColorPatch | null,
+  ): FlowchartNode | null;
+  /** Set or clear an edge's color preset or custom CSS stroke color. */
+  setEdgeColor(
+    edgeId: string,
+    color: FlowchartColorPreset | string | { color?: string | null; stroke?: string | null } | null,
+  ): FlowchartEdge | null;
+  /** Apply a color preset or custom color patch to the current selection. */
+  setSelectionColor(
+    colorOrPatch: FlowchartColorPreset | string | FlowchartNodeColorPatch | null,
+  ): this;
+  /** Reset the current selection's colors back to the theme default. */
+  clearSelectionColor(): this;
+  /** Lock or unlock one or more nodes against dragging, resizing, inline editing, and deletion. */
+  setNodeLocked(nodeId?: string | string[] | boolean, locked?: boolean): boolean;
+  /** Toggle locked state on the specified node(s) or current selection. */
+  toggleNodeLocked(nodeId?: string | string[]): boolean;
   /** Nodes not hidden inside a collapsed branch. */
   getVisibleNodes(): FlowchartNode[];
   isNodeHidden(nodeId: string): boolean;
@@ -317,9 +392,15 @@ export class VdFlowchart {
   removeEdge(edgeId: string): boolean;
   deleteSelection(): boolean;
 
-  // Layout
+  // Layout & Arrange (Z-Order, Align, Distribute)
   layout(mode?: LayoutMode, options?: LayoutOptions): this;
   autoArrange(options?: LayoutOptions): this;
+  bringToFront(targetId?: string | string[]): this;
+  bringForward(targetId?: string | string[]): this;
+  sendBackward(targetId?: string | string[]): this;
+  sendToBack(targetId?: string | string[]): this;
+  alignNodes(alignment?: FlowchartNodeAlignment, nodeIds?: string[]): this;
+  distributeNodes(axis?: FlowchartDistributeAxis, nodeIds?: string[]): this;
 
   // History
   undo(): this;
@@ -347,10 +428,12 @@ export class VdFlowchart {
   /** Open, close, or toggle the keyboard shortcuts overlay. */
   toggleShortcutsHelp(force?: boolean): this;
 
-  // Document
+  // Document & Export
   clear(): this;
   load(data: Partial<FlowchartDocument> | string, options?: LoadOptions): this;
   toJSON(): FlowchartDocument;
+  /** Serialize visible scene to a cropped, standalone `<svg>` string. */
+  exportSvg(options?: ExportSvgOptions): string;
 
   // Text editing
   startTextEdit(nodeId: string, options?: StartTextEditOptions): boolean;
@@ -399,4 +482,8 @@ export const FLOWCHART_NODE_TYPES: readonly FlowchartNodeType[];
 export const FLOWCHART_PORTS: readonly FlowchartPort[];
 export const FLOWCHART_EDGE_MARKERS: readonly FlowchartEdgeMarker[];
 export const FLOWCHART_EDGE_ROUTES: readonly FlowchartEdgeRoute[];
+export const FLOWCHART_EDGE_STROKE_STYLES: readonly FlowchartEdgeStrokeStyle[];
+export const FLOWCHART_COLOR_PRESETS: readonly FlowchartColorPreset[];
+export const FLOWCHART_NODE_ALIGNMENTS: readonly FlowchartNodeAlignment[];
+export const FLOWCHART_DISTRIBUTE_AXES: readonly FlowchartDistributeAxis[];
 export const FLOWCHART_KEYBOARD_SHORTCUTS: readonly FlowchartKeyboardShortcuts[];
