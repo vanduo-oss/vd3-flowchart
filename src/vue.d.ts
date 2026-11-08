@@ -1,6 +1,8 @@
 import type { DefineComponent } from 'vue';
 import type {
   FlowchartDocument,
+  FlowchartNode,
+  FlowchartEdge,
   FlowchartChangeEvent,
   FlowchartSelectEvent,
   FlowchartViewportEvent,
@@ -9,6 +11,11 @@ import type {
   LayoutMode,
   LayoutOptions,
   FlowchartKeyboardShortcuts,
+  FlowchartColorPreset,
+  FlowchartNodeColorPatch,
+  FlowchartNodeAlignment,
+  FlowchartDistributeAxis,
+  ExportSvgOptions,
 } from './core';
 
 /** Loosely-typed document accepted by the `data` prop. */
@@ -68,6 +75,32 @@ export interface VdFlowchartExposed {
   canRedo(): boolean;
   layout(mode?: LayoutMode, options?: LayoutOptions): void;
   fitNode(nodeId: string, padding?: number): void;
+  setNodeColor(
+    nodeId: string,
+    colorOrPatch: FlowchartColorPreset | string | FlowchartNodeColorPatch | null,
+  ): FlowchartNode | null;
+  setEdgeColor(
+    edgeId: string,
+    color: FlowchartColorPreset | string | { color?: string | null; stroke?: string | null } | null,
+  ): FlowchartEdge | null;
+  setSelectionColor(
+    colorOrPatch: FlowchartColorPreset | string | FlowchartNodeColorPatch | null,
+  ): void;
+  clearSelectionColor(): void;
+  bringToFront(targetId?: string | string[]): void;
+  bringForward(targetId?: string | string[]): void;
+  sendBackward(targetId?: string | string[]): void;
+  sendToBack(targetId?: string | string[]): void;
+  alignNodes(alignment?: FlowchartNodeAlignment, nodeIds?: string[]): void;
+  distributeNodes(axis?: FlowchartDistributeAxis, nodeIds?: string[]): void;
+  setNodeLocked(nodeId?: string | string[] | boolean, locked?: boolean): boolean;
+  toggleNodeLocked(nodeId?: string | string[]): boolean;
+  duplicateSelection(): FlowchartNode | FlowchartNode[] | null;
+  copySelection(): boolean;
+  pasteClipboard(): boolean;
+  pasteSelection(): FlowchartNode | FlowchartNode[] | null;
+  cutSelection(): boolean;
+  exportSvg(options?: ExportSvgOptions): string;
 }
 
 /* eslint-disable @typescript-eslint/no-empty-object-type -- DefineComponent filler params */

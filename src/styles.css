@@ -26,6 +26,51 @@
   --vd-flowchart-panel-bg: color-mix(in srgb, var(--vd-flowchart-panel-alt) 88%, transparent);
   /* Font for SVG text + UI chrome (SVG <text> does not inherit reliably). */
   --vd-flowchart-font: inherit;
+  /* Theme-adaptive semantic & categorical color palettes (light mode). */
+  --vd-flowchart-palette-primary-fill: #dbeafe;
+  --vd-flowchart-palette-primary-stroke: #2563eb;
+  --vd-flowchart-palette-primary-text: #1e3a8a;
+  --vd-flowchart-palette-primary-edge: #2563eb;
+  --vd-flowchart-palette-secondary-fill: #e0e7ff;
+  --vd-flowchart-palette-secondary-stroke: #4f46e5;
+  --vd-flowchart-palette-secondary-text: #312e81;
+  --vd-flowchart-palette-secondary-edge: #4f46e5;
+  --vd-flowchart-palette-success-fill: #dcfce7;
+  --vd-flowchart-palette-success-stroke: #16a34a;
+  --vd-flowchart-palette-success-text: #14532d;
+  --vd-flowchart-palette-success-edge: #16a34a;
+  --vd-flowchart-palette-warning-fill: #fef3c7;
+  --vd-flowchart-palette-warning-stroke: #d97706;
+  --vd-flowchart-palette-warning-text: #78350f;
+  --vd-flowchart-palette-warning-edge: #d97706;
+  --vd-flowchart-palette-danger-fill: #fee2e2;
+  --vd-flowchart-palette-danger-stroke: #dc2626;
+  --vd-flowchart-palette-danger-text: #7f1d1d;
+  --vd-flowchart-palette-danger-edge: #dc2626;
+  --vd-flowchart-palette-info-fill: #e0f2fe;
+  --vd-flowchart-palette-info-stroke: #0284c7;
+  --vd-flowchart-palette-info-text: #0c4a6e;
+  --vd-flowchart-palette-info-edge: #0284c7;
+  --vd-flowchart-palette-violet-fill: #f3e8ff;
+  --vd-flowchart-palette-violet-stroke: #9333ea;
+  --vd-flowchart-palette-violet-text: #581c87;
+  --vd-flowchart-palette-violet-edge: #9333ea;
+  --vd-flowchart-palette-teal-fill: #ccfbf1;
+  --vd-flowchart-palette-teal-stroke: #0d9488;
+  --vd-flowchart-palette-teal-text: #134e4a;
+  --vd-flowchart-palette-teal-edge: #0d9488;
+  --vd-flowchart-palette-orange-fill: #ffedd5;
+  --vd-flowchart-palette-orange-stroke: #ea580c;
+  --vd-flowchart-palette-orange-text: #7c2d12;
+  --vd-flowchart-palette-orange-edge: #ea580c;
+  --vd-flowchart-palette-pink-fill: #fce7f3;
+  --vd-flowchart-palette-pink-stroke: #db2777;
+  --vd-flowchart-palette-pink-text: #831843;
+  --vd-flowchart-palette-pink-edge: #db2777;
+  --vd-flowchart-palette-neutral-fill: #f1f5f9;
+  --vd-flowchart-palette-neutral-stroke: #64748b;
+  --vd-flowchart-palette-neutral-text: #1e293b;
+  --vd-flowchart-palette-neutral-edge: #64748b;
 }
 
 /* Dark idle strokes lean on accent so nodes stay outlined without hover. Hosts
@@ -37,6 +82,50 @@
     var(--vd-flowchart-accent) 48%,
     var(--vd-border-color, #404040)
   );
+  --vd-flowchart-palette-primary-fill: #1e3a8a;
+  --vd-flowchart-palette-primary-stroke: #60a5fa;
+  --vd-flowchart-palette-primary-text: #dbeafe;
+  --vd-flowchart-palette-primary-edge: #60a5fa;
+  --vd-flowchart-palette-secondary-fill: #312e81;
+  --vd-flowchart-palette-secondary-stroke: #818cf8;
+  --vd-flowchart-palette-secondary-text: #e0e7ff;
+  --vd-flowchart-palette-secondary-edge: #818cf8;
+  --vd-flowchart-palette-success-fill: #14532d;
+  --vd-flowchart-palette-success-stroke: #4ade80;
+  --vd-flowchart-palette-success-text: #dcfce7;
+  --vd-flowchart-palette-success-edge: #4ade80;
+  --vd-flowchart-palette-warning-fill: #78350f;
+  --vd-flowchart-palette-warning-stroke: #fbbf24;
+  --vd-flowchart-palette-warning-text: #fef3c7;
+  --vd-flowchart-palette-warning-edge: #fbbf24;
+  --vd-flowchart-palette-danger-fill: #7f1d1d;
+  --vd-flowchart-palette-danger-stroke: #f87171;
+  --vd-flowchart-palette-danger-text: #fee2e2;
+  --vd-flowchart-palette-danger-edge: #f87171;
+  --vd-flowchart-palette-info-fill: #0c4a6e;
+  --vd-flowchart-palette-info-stroke: #38bdf8;
+  --vd-flowchart-palette-info-text: #e0f2fe;
+  --vd-flowchart-palette-info-edge: #38bdf8;
+  --vd-flowchart-palette-violet-fill: #581c87;
+  --vd-flowchart-palette-violet-stroke: #c084fc;
+  --vd-flowchart-palette-violet-text: #f3e8ff;
+  --vd-flowchart-palette-violet-edge: #c084fc;
+  --vd-flowchart-palette-teal-fill: #134e4a;
+  --vd-flowchart-palette-teal-stroke: #2dd4bf;
+  --vd-flowchart-palette-teal-text: #ccfbf1;
+  --vd-flowchart-palette-teal-edge: #2dd4bf;
+  --vd-flowchart-palette-orange-fill: #7c2d12;
+  --vd-flowchart-palette-orange-stroke: #fb923c;
+  --vd-flowchart-palette-orange-text: #ffedd5;
+  --vd-flowchart-palette-orange-edge: #fb923c;
+  --vd-flowchart-palette-pink-fill: #831843;
+  --vd-flowchart-palette-pink-stroke: #f472b6;
+  --vd-flowchart-palette-pink-text: #fce7f3;
+  --vd-flowchart-palette-pink-edge: #f472b6;
+  --vd-flowchart-palette-neutral-fill: #1e293b;
+  --vd-flowchart-palette-neutral-stroke: #94a3b8;
+  --vd-flowchart-palette-neutral-text: #f1f5f9;
+  --vd-flowchart-palette-neutral-edge: #94a3b8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +135,50 @@
       var(--vd-flowchart-accent) 48%,
       var(--vd-border-color, #404040)
     );
+    --vd-flowchart-palette-primary-fill: #1e3a8a;
+    --vd-flowchart-palette-primary-stroke: #60a5fa;
+    --vd-flowchart-palette-primary-text: #dbeafe;
+    --vd-flowchart-palette-primary-edge: #60a5fa;
+    --vd-flowchart-palette-secondary-fill: #312e81;
+    --vd-flowchart-palette-secondary-stroke: #818cf8;
+    --vd-flowchart-palette-secondary-text: #e0e7ff;
+    --vd-flowchart-palette-secondary-edge: #818cf8;
+    --vd-flowchart-palette-success-fill: #14532d;
+    --vd-flowchart-palette-success-stroke: #4ade80;
+    --vd-flowchart-palette-success-text: #dcfce7;
+    --vd-flowchart-palette-success-edge: #4ade80;
+    --vd-flowchart-palette-warning-fill: #78350f;
+    --vd-flowchart-palette-warning-stroke: #fbbf24;
+    --vd-flowchart-palette-warning-text: #fef3c7;
+    --vd-flowchart-palette-warning-edge: #fbbf24;
+    --vd-flowchart-palette-danger-fill: #7f1d1d;
+    --vd-flowchart-palette-danger-stroke: #f87171;
+    --vd-flowchart-palette-danger-text: #fee2e2;
+    --vd-flowchart-palette-danger-edge: #f87171;
+    --vd-flowchart-palette-info-fill: #0c4a6e;
+    --vd-flowchart-palette-info-stroke: #38bdf8;
+    --vd-flowchart-palette-info-text: #e0f2fe;
+    --vd-flowchart-palette-info-edge: #38bdf8;
+    --vd-flowchart-palette-violet-fill: #581c87;
+    --vd-flowchart-palette-violet-stroke: #c084fc;
+    --vd-flowchart-palette-violet-text: #f3e8ff;
+    --vd-flowchart-palette-violet-edge: #c084fc;
+    --vd-flowchart-palette-teal-fill: #134e4a;
+    --vd-flowchart-palette-teal-stroke: #2dd4bf;
+    --vd-flowchart-palette-teal-text: #ccfbf1;
+    --vd-flowchart-palette-teal-edge: #2dd4bf;
+    --vd-flowchart-palette-orange-fill: #7c2d12;
+    --vd-flowchart-palette-orange-stroke: #fb923c;
+    --vd-flowchart-palette-orange-text: #ffedd5;
+    --vd-flowchart-palette-orange-edge: #fb923c;
+    --vd-flowchart-palette-pink-fill: #831843;
+    --vd-flowchart-palette-pink-stroke: #f472b6;
+    --vd-flowchart-palette-pink-text: #fce7f3;
+    --vd-flowchart-palette-pink-edge: #f472b6;
+    --vd-flowchart-palette-neutral-fill: #1e293b;
+    --vd-flowchart-palette-neutral-stroke: #94a3b8;
+    --vd-flowchart-palette-neutral-text: #f1f5f9;
+    --vd-flowchart-palette-neutral-edge: #94a3b8;
   }
 }
 
@@ -78,6 +211,8 @@
 }
 
 .vd-flowchart-toolbar {
+  position: relative;
+  z-index: 7;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -991,4 +1126,365 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* --- v1.6.0: Coloring, Edge Stroke Styles, Node Locking, Inspector Grid --- */
+
+.vd-flowchart-color-popover-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.vd-flowchart-color-popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 10;
+  width: 11.5rem;
+  padding: 0.55rem;
+  border: 1px solid var(--vd-flowchart-border);
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--vd-flowchart-panel) 98%, var(--vd-bg-primary, #fcfbf7));
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--vd-flowchart-text) 16%, transparent);
+}
+
+.vd-flowchart-color-popover[hidden] {
+  display: none;
+}
+
+.vd-flowchart-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.vd-flowchart-swatch {
+  appearance: none;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 1.55rem;
+  padding: 0;
+  border: 2px solid var(--vd-flowchart-border);
+  border-radius: 6px;
+  background-color: var(--vd-flowchart-node-fill);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.vd-flowchart-swatch:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.vd-flowchart-swatch:focus-visible {
+  outline: 2px solid var(--vd-flowchart-accent);
+  outline-offset: 2px;
+}
+
+.vd-flowchart-swatch:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.vd-flowchart-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--vd-flowchart-surface), 0 0 0 4px var(--vd-flowchart-accent);
+}
+
+.vd-flowchart-swatch--default {
+  background-color: var(--vd-flowchart-node-fill);
+  border-color: var(--vd-flowchart-node-stroke);
+}
+
+.vd-flowchart-swatch--primary {
+  background-color: var(--vd-flowchart-palette-primary-fill);
+  border-color: var(--vd-flowchart-palette-primary-stroke);
+}
+
+.vd-flowchart-swatch--secondary {
+  background-color: var(--vd-flowchart-palette-secondary-fill);
+  border-color: var(--vd-flowchart-palette-secondary-stroke);
+}
+
+.vd-flowchart-swatch--success {
+  background-color: var(--vd-flowchart-palette-success-fill);
+  border-color: var(--vd-flowchart-palette-success-stroke);
+}
+
+.vd-flowchart-swatch--warning {
+  background-color: var(--vd-flowchart-palette-warning-fill);
+  border-color: var(--vd-flowchart-palette-warning-stroke);
+}
+
+.vd-flowchart-swatch--danger {
+  background-color: var(--vd-flowchart-palette-danger-fill);
+  border-color: var(--vd-flowchart-palette-danger-stroke);
+}
+
+.vd-flowchart-swatch--info {
+  background-color: var(--vd-flowchart-palette-info-fill);
+  border-color: var(--vd-flowchart-palette-info-stroke);
+}
+
+.vd-flowchart-swatch--violet {
+  background-color: var(--vd-flowchart-palette-violet-fill);
+  border-color: var(--vd-flowchart-palette-violet-stroke);
+}
+
+.vd-flowchart-swatch--teal {
+  background-color: var(--vd-flowchart-palette-teal-fill);
+  border-color: var(--vd-flowchart-palette-teal-stroke);
+}
+
+.vd-flowchart-swatch--orange {
+  background-color: var(--vd-flowchart-palette-orange-fill);
+  border-color: var(--vd-flowchart-palette-orange-stroke);
+}
+
+.vd-flowchart-swatch--pink {
+  background-color: var(--vd-flowchart-palette-pink-fill);
+  border-color: var(--vd-flowchart-palette-pink-stroke);
+}
+
+.vd-flowchart-swatch--neutral {
+  background-color: var(--vd-flowchart-palette-neutral-fill);
+  border-color: var(--vd-flowchart-palette-neutral-stroke);
+}
+
+.vd-flowchart-inspector-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.vd-flowchart-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.vd-flowchart-action-btn {
+  min-height: 1.85rem;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.vd-flowchart-action-btn.is-active {
+  border-color: var(--vd-flowchart-accent);
+  background-color: color-mix(in srgb, var(--vd-flowchart-accent) 16%, transparent);
+  color: var(--vd-flowchart-accent);
+}
+
+/* Node color presets */
+.vd-flowchart-node[data-color='primary'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-primary-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-primary-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-primary-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-primary-text);
+}
+
+.vd-flowchart-node[data-color='secondary'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-secondary-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-secondary-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-secondary-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-secondary-text);
+}
+
+.vd-flowchart-node[data-color='success'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-success-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-success-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-success-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-success-text);
+}
+
+.vd-flowchart-node[data-color='warning'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-warning-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-warning-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-warning-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-warning-text);
+}
+
+.vd-flowchart-node[data-color='danger'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-danger-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-danger-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-danger-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-danger-text);
+}
+
+.vd-flowchart-node[data-color='info'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-info-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-info-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-info-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-info-text);
+}
+
+.vd-flowchart-node[data-color='violet'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-violet-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-violet-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-violet-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-violet-text);
+}
+
+.vd-flowchart-node[data-color='teal'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-teal-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-teal-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-teal-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-teal-text);
+}
+
+.vd-flowchart-node[data-color='orange'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-orange-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-orange-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-orange-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-orange-text);
+}
+
+.vd-flowchart-node[data-color='pink'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-pink-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-pink-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-pink-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-pink-text);
+}
+
+.vd-flowchart-node[data-color='neutral'] {
+  --vd-flowchart-node-fill: var(--vd-flowchart-palette-neutral-fill);
+  --vd-flowchart-node-stroke: var(--vd-flowchart-palette-neutral-stroke);
+  --vd-flowchart-node-stroke-selected: var(--vd-flowchart-palette-neutral-stroke);
+  --vd-flowchart-text: var(--vd-flowchart-palette-neutral-text);
+}
+
+/* Edge color presets */
+.vd-flowchart-edge[data-color='primary'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-primary-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-primary-edge);
+}
+
+.vd-flowchart-edge[data-color='secondary'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-secondary-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-secondary-edge);
+}
+
+.vd-flowchart-edge[data-color='success'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-success-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-success-edge);
+}
+
+.vd-flowchart-edge[data-color='warning'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-warning-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-warning-edge);
+}
+
+.vd-flowchart-edge[data-color='danger'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-danger-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-danger-edge);
+}
+
+.vd-flowchart-edge[data-color='info'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-info-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-info-edge);
+}
+
+.vd-flowchart-edge[data-color='violet'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-violet-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-violet-edge);
+}
+
+.vd-flowchart-edge[data-color='teal'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-teal-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-teal-edge);
+}
+
+.vd-flowchart-edge[data-color='orange'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-orange-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-orange-edge);
+}
+
+.vd-flowchart-edge[data-color='pink'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-pink-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-pink-edge);
+}
+
+.vd-flowchart-edge[data-color='neutral'] {
+  --vd-flowchart-edge-stroke: var(--vd-flowchart-palette-neutral-edge);
+  --vd-flowchart-edge-stroke-selected: var(--vd-flowchart-palette-neutral-edge);
+}
+
+/* Minimap colored nodes */
+.vd-flowchart-minimap-node[data-color='primary'] {
+  fill: var(--vd-flowchart-palette-primary-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='secondary'] {
+  fill: var(--vd-flowchart-palette-secondary-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='success'] {
+  fill: var(--vd-flowchart-palette-success-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='warning'] {
+  fill: var(--vd-flowchart-palette-warning-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='danger'] {
+  fill: var(--vd-flowchart-palette-danger-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='info'] {
+  fill: var(--vd-flowchart-palette-info-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='violet'] {
+  fill: var(--vd-flowchart-palette-violet-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='teal'] {
+  fill: var(--vd-flowchart-palette-teal-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='orange'] {
+  fill: var(--vd-flowchart-palette-orange-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='pink'] {
+  fill: var(--vd-flowchart-palette-pink-stroke);
+}
+
+.vd-flowchart-minimap-node[data-color='neutral'] {
+  fill: var(--vd-flowchart-palette-neutral-stroke);
+}
+
+/* Edge stroke styles */
+@keyframes vd-flowchart-edge-flow {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+
+.vd-flowchart-edge.is-stroke-animated .vd-flowchart-edge-path {
+  animation: vd-flowchart-edge-flow 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vd-flowchart-edge.is-stroke-animated .vd-flowchart-edge-path {
+    animation: none;
+  }
+}
+
+/* Locked nodes */
+.vd-flowchart-node.is-locked {
+  cursor: default;
+}
+
+.vd-flowchart-node-lock {
+  pointer-events: none;
+}
+
+.vd-flowchart-node-lock-bg {
+  fill: color-mix(in srgb, var(--vd-flowchart-panel) 92%, var(--vd-bg-primary, #fcfbf7));
+  stroke: var(--vd-flowchart-border);
+  stroke-width: 1;
+}
+
+.vd-flowchart-node-lock-icon {
+  fill: var(--vd-flowchart-muted);
 }

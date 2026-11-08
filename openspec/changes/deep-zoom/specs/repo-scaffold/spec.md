@@ -2,7 +2,7 @@
 
 ### Requirement: shipped artifact and engine-floor checks
 
-`release:check` MUST run the local quality gates without publishing. CI MUST run those gates on Node 24 and MUST also install and test the built package on Node 20.19. A pack check MUST reject unexpected tarball paths and MUST install the tarball in temporary ESM and CJS consumers.
+`release:check` MUST run the local quality gates without publishing. CI MUST run those gates on Node 26 and MUST also install and test the built package on Node 20.19. A pack check MUST reject unexpected tarball paths and MUST install the tarball in temporary ESM and CJS consumers.
 
 #### Scenario: release check does not publish
 

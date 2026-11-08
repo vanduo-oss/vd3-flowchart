@@ -11,6 +11,8 @@ and `--vd-bg-*`-themed chrome on the package root.
 The package entry SHALL export Vue `VdFlowchart` and SHALL re-export
 `VdFlowchartCore`, `computeLayout`, `LAYOUT_MODES`, `FLOWCHART_NODE_TYPES`,
 `FLOWCHART_PORTS`, `FLOWCHART_EDGE_MARKERS`, `FLOWCHART_EDGE_ROUTES`,
+`FLOWCHART_EDGE_STROKE_STYLES`, `FLOWCHART_COLOR_PRESETS`,
+`FLOWCHART_NODE_ALIGNMENTS`, `FLOWCHART_DISTRIBUTE_AXES`,
 `FLOWCHART_KEYBOARD_SHORTCUTS`, and `VD_FLOWCHART_VERSION`. The entry MUST
 use named exports only.
 
